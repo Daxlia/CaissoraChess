@@ -1,5 +1,8 @@
-target/
 *.tmp
+dist/
 node_modules/
-src-tauri/binaries/
 src-tauri/android-libs/
+src-tauri/binaries/
+src-tauri/gen/schemas/
+src-tauri/target/
+target/

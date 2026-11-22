@@ -1,0 +1,36 @@
+//! Guscio Tauri: espone il core ai frontend tramite comandi. Nessuna logica scacchistica qui.
+
+mod commands;
+mod engine_path;
+mod state;
+
+use tauri::Manager;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .setup(|app| {
+            let dir = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&dir)?;
+            app.manage(state::AppState::open(dir)?);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::board_legal_moves,
+            commands::board_play,
+            commands::engine_start,
+            commands::engine_set_strength,
+            commands::engine_new_game,
+            commands::engine_go,
+            commands::engine_stop,
+            commands::openings_ensure,
+            commands::openings_search,
+            commands::practice_start,
+            commands::practice_move,
+            commands::practice_hint,
+            commands::settings_get_all,
+            commands::settings_set,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running CaissoraChess");
+}

@@ -78,22 +78,9 @@ pub fn pgn_to_uci(pgn: &str) -> Result<Vec<String>> {
     Ok(out)
 }
 
-const SCHEMA: &str = "
-CREATE TABLE IF NOT EXISTS openings (
-    id INTEGER PRIMARY KEY,
-    eco TEXT NOT NULL,
-    name TEXT NOT NULL,
-    pgn TEXT NOT NULL,
-    uci TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_openings_eco ON openings(eco);
-CREATE INDEX IF NOT EXISTS idx_openings_name ON openings(name COLLATE NOCASE);
-";
-
-/// Importa in SQLite in un'unica transazione: o tutto o niente. Restituisce il numero di righe.
+/// Importa in SQLite (schema creato da `db::migrate`) in un'unica transazione: o tutto o niente. Restituisce il numero di righe.
 /// Una riga con PGN non valida annulla l'import (dato corrotto = errore esplicito).
 pub fn import(conn: &mut Connection, rows: &[RawOpening]) -> Result<usize> {
-    conn.execute_batch(SCHEMA)?;
     let tx = conn.transaction()?;
     tx.execute("DELETE FROM openings", [])?;
     {
@@ -240,7 +227,7 @@ mod tests {
         let rows = read_parquet(&data()).expect("read parquet");
         assert_eq!(rows.len(), 3704);
         assert_eq!(rows[0].eco, "A00");
-        let mut conn = Connection::open_in_memory().unwrap();
+        let mut conn = crate::db::open_in_memory().unwrap();
         assert_eq!(import(&mut conn, &rows).unwrap(), 3704); // ogni PGN reale è legale
         assert!(search(&conn, "Amar", 10).unwrap().iter().all(|o| o.name.to_lowercase().contains("amar")));
         let b2 = search(&conn, "B20", 5).unwrap();

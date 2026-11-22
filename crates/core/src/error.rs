@@ -15,6 +15,8 @@ pub enum Error {
     Engine(String),
     #[error("engine timeout: {0}")]
     EngineTimeout(String),
+    #[error("download error: {0}")]
+    Download(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("csv error: {0}")]
