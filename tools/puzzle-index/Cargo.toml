@@ -1,0 +1,7 @@
+[package]
+name = "puzzle-index"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+caissora-core = { path = "../../crates/core" }

@@ -1,0 +1,5 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "tools/puzzle-index"]
+# src-tauri è un pacchetto separato: richiede webkit2gtk/Android SDK, il core no.
+exclude = ["src-tauri"]
