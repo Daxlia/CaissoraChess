@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use shakmaty::{
     fen::Fen, san::San, uci::UciMove, CastlingMode, Chess, Color, EnPassantMode, Move, Position,
 };
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GameStatus {
@@ -12,6 +13,35 @@ pub enum GameStatus {
     Checkmate { winner: Side },
     Stalemate,
     InsufficientMaterial,
+}
+
+/// Patta rivendicabile/automatica dovuta alla storia della partita.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DrawKind {
+    ThreefoldRepetition,
+    FiftyMoveRule,
+}
+
+/// Rigioca `moves` dalla posizione iniziale e dice se la posizione finale è una patta per
+/// triplice ripetizione o per la regola delle 50 mosse (100 semimosse senza cattura né pedone).
+pub fn history_draw(moves: &[String]) -> Result<Option<DrawKind>> {
+    let mut b = Board::default();
+    let mut seen: HashMap<String, u32> = HashMap::new();
+    seen.insert(b.repetition_key(), 1);
+    let mut last = 1;
+    for m in moves {
+        b.play_uci(m)?;
+        let c = seen.entry(b.repetition_key()).or_insert(0);
+        *c += 1;
+        last = *c;
+    }
+    if last >= 3 {
+        return Ok(Some(DrawKind::ThreefoldRepetition));
+    }
+    if b.halfmove_clock() >= 100 {
+        return Ok(Some(DrawKind::FiftyMoveRule));
+    }
+    Ok(None)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,6 +127,23 @@ impl Board {
         self.pos.is_check()
     }
 
+    /// Casella del re del lato al tratto se è sotto scacco (per evidenziarla).
+    pub fn checked_king_square(&self) -> Option<String> {
+        if !self.pos.is_check() {
+            return None;
+        }
+        self.pos.board().king_of(self.pos.turn()).map(|s| s.to_string())
+    }
+
+    /// Chiave di ripetizione: pezzi, turno, diritti di arrocco, en passant legale.
+    fn repetition_key(&self) -> String {
+        self.fen().split(' ').take(4).collect::<Vec<_>>().join(" ")
+    }
+
+    pub fn halfmove_clock(&self) -> u32 {
+        self.pos.halfmoves()
+    }
+
     pub fn status(&self) -> GameStatus {
         if self.pos.is_checkmate() {
             // Chi deve muovere è matto: vince l'altro.
@@ -167,6 +214,29 @@ mod tests {
         }
         assert!(b.is_check());
         assert_eq!(b.status(), GameStatus::Checkmate { winner: Side::Black });
+    }
+
+    #[test]
+    fn threefold_repetition_from_history() {
+        let sh = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        // Cc3 Cc6 Cb1 Cb8 ripetuto: la posizione iniziale compare 3 volte dopo 8 semimosse
+        let one = ["g1f3", "g8f6", "f3g1", "f6g8"];
+        let mut v = sh(&one);
+        assert_eq!(history_draw(&v).unwrap(), None); // 2 occorrenze
+        v.extend(sh(&one));
+        assert_eq!(history_draw(&v).unwrap(), Some(DrawKind::ThreefoldRepetition));
+        assert_eq!(history_draw(&[]).unwrap(), None);
+        assert!(history_draw(&sh(&["e2e5"])).is_err());
+    }
+
+    #[test]
+    fn checked_king_square_and_clock() {
+        let mut b = Board::default();
+        assert_eq!(b.checked_king_square(), None);
+        for m in ["f2f3", "e7e5", "g2g4", "d8h4"] { b.play_uci(m).unwrap(); }
+        assert_eq!(b.checked_king_square().as_deref(), Some("e1"));
+        let c = Board::from_fen("8/8/4k3/8/8/4K3/8/7R w - - 99 80").unwrap();
+        assert_eq!(c.halfmove_clock(), 99);
     }
 
     #[test]

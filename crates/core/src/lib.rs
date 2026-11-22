@@ -4,6 +4,7 @@ pub mod db;
 pub mod download;
 pub mod engine;
 pub mod error;
+pub mod games;
 pub mod id_filter;
 pub mod openings;
 pub mod puzzle;

@@ -117,6 +117,25 @@ pub fn search(conn: &Connection, query: &str, limit: usize) -> Result<Vec<Openin
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+/// Aggiunge/rimuove un'apertura dalla libreria personale (idempotente).
+pub fn set_saved(conn: &Connection, opening_id: i64, saved: bool) -> Result<()> {
+    if saved {
+        conn.execute("INSERT OR IGNORE INTO saved_openings(opening_id) VALUES (?1)", [opening_id])?;
+    } else {
+        conn.execute("DELETE FROM saved_openings WHERE opening_id = ?1", [opening_id])?;
+    }
+    Ok(())
+}
+
+pub fn list_saved(conn: &Connection) -> Result<Vec<Opening>> {
+    let mut st = conn.prepare(
+        "SELECT o.id, o.eco, o.name, o.pgn, o.uci FROM openings o
+         JOIN saved_openings s ON s.opening_id = o.id ORDER BY s.saved_at DESC, o.id DESC",
+    )?;
+    let rows = st.query_map([], row)?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
 // ---------------------------------------------------------------- pratica
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -235,6 +254,22 @@ mod tests {
         assert!(search(&conn, "%", 5).unwrap().is_empty()); // % non è un jolly
         assert!(search(&conn, "x'; DROP TABLE openings;--", 5).unwrap().is_empty());
         assert_eq!(conn.query_row("SELECT count(*) FROM openings", [], |r| r.get::<_, i64>(0)).unwrap(), 3704);
+    }
+
+    #[test]
+    fn saved_library_add_remove() {
+        let mut conn = crate::db::open_in_memory().unwrap();
+        import(&mut conn, &[
+            RawOpening { eco: "C20".into(), name: "King's Pawn Game".into(), pgn: "1. e4 e5".into() },
+            RawOpening { eco: "D00".into(), name: "Queen's Pawn Game".into(), pgn: "1. d4 d5".into() },
+        ]).unwrap();
+        let all = search(&conn, "Pawn", 10).unwrap();
+        set_saved(&conn, all[0].id, true).unwrap();
+        set_saved(&conn, all[0].id, true).unwrap(); // idempotente
+        assert_eq!(list_saved(&conn).unwrap().len(), 1);
+        set_saved(&conn, all[0].id, false).unwrap();
+        assert!(list_saved(&conn).unwrap().is_empty());
+        assert!(set_saved(&conn, 99999, true).is_err()); // apertura inesistente: vincolo FK
     }
 
     #[test]

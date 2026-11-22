@@ -1,7 +1,7 @@
 use crate::{engine_path, state::AppState};
 use caissora_core::{
     chess::{Board, GameStatus, Side},
-    db, download,
+    db, download, games,
     engine::{parse::Score, spawn_process, Engine, GoParams, Position},
     openings::{self, Opening, Practice, PracticeMode, Verdict, OPENINGS_URL},
 };
@@ -22,6 +22,7 @@ pub struct BoardAfter {
     status: &'static str,
     winner: Option<&'static str>,
     check: bool,
+    check_square: Option<String>,
 }
 
 #[tauri::command]
@@ -39,7 +40,17 @@ pub fn board_play(fen: String, uci: String) -> Res<BoardAfter> {
         GameStatus::Stalemate => ("stalemate", None),
         GameStatus::InsufficientMaterial => ("insufficient_material", None),
     };
-    Ok(BoardAfter { fen: b.fen(), san, status, winner, check: b.is_check() })
+    Ok(BoardAfter { fen: b.fen(), san, status, winner, check: b.is_check(), check_square: b.checked_king_square() })
+}
+
+/// "threefold_repetition" | "fifty_move_rule" | null, per la partita giocata da `moves` (UCI).
+#[tauri::command]
+pub fn game_draw_status(moves: Vec<String>) -> Res<Option<&'static str>> {
+    use caissora_core::chess::{history_draw, DrawKind};
+    Ok(history_draw(&moves).map_err(s)?.map(|d| match d {
+        DrawKind::ThreefoldRepetition => "threefold_repetition",
+        DrawKind::FiftyMoveRule => "fifty_move_rule",
+    }))
 }
 
 // ------------------------------------------------------------------ engine
@@ -191,7 +202,7 @@ pub fn practice_hint(state: State<'_, AppState>) -> Res<Option<(String, String)>
 // ------------------------------------------------------------------ impostazioni
 
 /// Solo queste chiavi sono scrivibili dal frontend.
-const SETTING_KEYS: &[&str] = &["theme_mode", "accent", "language", "reduce_motion", "engine_elo", "time_control", "board_theme", "piece_set"];
+const SETTING_KEYS: &[&str] = &["theme_mode", "accent", "language", "reduce_motion", "engine_elo", "time_control", "board_theme", "piece_set", "academy_progress", "quality", "default_time_control", "allow_undo"];
 
 #[tauri::command]
 pub fn settings_get_all(state: State<'_, AppState>) -> Res<std::collections::HashMap<String, String>> {
@@ -206,4 +217,27 @@ pub fn settings_set(state: State<'_, AppState>, key: String, value: String) -> R
     if !SETTING_KEYS.contains(&key.as_str()) { return Err(format!("unknown setting `{key}`")); }
     if value.len() > 256 { return Err("value too long".into()); }
     db::set_setting(&state.db.lock().unwrap(), &key, &value).map_err(s)
+}
+
+// ------------------------------------------------------------------ libreria e archivio
+
+#[tauri::command]
+pub fn openings_saved(state: State<'_, AppState>) -> Res<Vec<Opening>> {
+    openings::list_saved(&state.db.lock().unwrap()).map_err(s)
+}
+
+#[tauri::command]
+pub fn openings_set_saved(state: State<'_, AppState>, opening_id: i64, saved: bool) -> Res<()> {
+    openings::set_saved(&state.db.lock().unwrap(), opening_id, saved).map_err(s)
+}
+
+#[tauri::command]
+pub fn games_save(state: State<'_, AppState>, opponent: String, engine_elo: Option<i64>, time_control: String, user_is_white: bool, result: String, moves_uci: String) -> Res<i64> {
+    let g = games::NewGame { opponent: &opponent, engine_elo, time_control: &time_control, user_is_white, result: &result, moves_uci: &moves_uci };
+    games::save(&state.db.lock().unwrap(), &g).map_err(s)
+}
+
+#[tauri::command]
+pub fn games_list(state: State<'_, AppState>) -> Res<Vec<games::Game>> {
+    games::list(&state.db.lock().unwrap(), 200).map_err(s)
 }

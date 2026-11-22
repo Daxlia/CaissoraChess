@@ -1,0 +1,198 @@
+{
+  "app": {
+    "startFailed": "CaissoraChess could not start: {error}",
+    "viewFailed": "This section could not be loaded: {error}"
+  },
+  "nav": {
+    "label": "Main navigation",
+    "play": "Play",
+    "training": "Training",
+    "academy": "Academy",
+    "themes": "Themes",
+    "settings": "Settings"
+  },
+  "common": {
+    "retry": "Try again",
+    "cancel": "Cancel"
+  },
+  "board": {
+    "flip": "Flip board"
+  },
+  "piece": {
+    "queen": "Queen",
+    "rook": "Rook",
+    "bishop": "Bishop",
+    "knight": "Knight"
+  },
+  "replay": {
+    "start": "Start",
+    "first": "First move",
+    "prev": "Previous move",
+    "next": "Next move",
+    "last": "Last move"
+  },
+  "play": {
+    "tab": {
+      "game": "Game",
+      "archive": "My games"
+    },
+    "moves": "Moves",
+    "vsEngine": "Play Stockfish",
+    "engine": "Engine",
+    "you": "You",
+    "newGame": "New game",
+    "start": "Start game",
+    "resign": "Resign",
+    "offerDraw": "Offer draw",
+    "undo": "Undo move",
+    "engineStarting": "Starting the engine…",
+    "pressNew": "Press “New game” to begin.",
+    "strength": "Engine strength",
+    "strengthElo": "Limited to Elo {elo}",
+    "fullStrength": "Full strength",
+    "eloNote": "Engine-declared range {min}–{max}. This is the engine’s setting, not an official rating.",
+    "noEloSupport": "This engine build does not support limiting its strength.",
+    "color": "Your color",
+    "white": "White",
+    "black": "Black",
+    "random": "Random",
+    "timeControl": "Time control",
+    "minutes": "Minutes",
+    "increment": "Increment (s)",
+    "tc": {
+      "bullet": "Bullet",
+      "blitz": "Blitz",
+      "rapid": "Rapid",
+      "classical": "Classical",
+      "unlimited": "Untimed",
+      "custom": "Custom"
+    },
+    "promoteTitle": "Promote to",
+    "draw": "Draw",
+    "youWon": "You won",
+    "youLost": "You lost",
+    "result": {
+      "checkmate": "checkmate",
+      "stalemate": "stalemate",
+      "insufficient": "insufficient material",
+      "fifty": "fifty-move rule",
+      "threefold": "threefold repetition",
+      "resigned": "resignation",
+      "timeout": "time forfeit",
+      "agreed": "draw agreed"
+    },
+    "drawDeclined": "The engine declined the draw.",
+    "saveFailed": "The game could not be saved: {error}"
+  },
+  "archive": {
+    "mine": "My games",
+    "empty": "No games yet. Finished games appear here.",
+    "pick": "Select a game to replay it.",
+    "win": "Win",
+    "loss": "Loss",
+    "unfinished": "Unfinished"
+  },
+  "training": {
+    "subtitle": "Practice openings with a real rules engine.",
+    "openings": "Opening Explorer"
+  },
+  "openings": {
+    "preparing": "Preparing the opening database…",
+    "downloading": "Downloading openings… {kb} KB",
+    "failed": "The opening database could not be prepared: {error}",
+    "searchPlaceholder": "Search by name or ECO code",
+    "savedOnly": "Saved only",
+    "noResults": "No openings match your search.",
+    "noSaved": "You have no saved openings.",
+    "pick": "Select an opening to see its line.",
+    "save": "Save to library",
+    "remove": "Remove from library",
+    "practice": {
+      "title": "Practice this opening",
+      "guided": "Guided Practice",
+      "recall": "Recall Practice",
+      "go": "Your move.",
+      "hint": "Show hint",
+      "correct": "Correct — that is the book move.",
+      "illegal": "That move is not legal.",
+      "deviation": "Legal, but not part of this line. The line continues with {move}.",
+      "complete": "Line complete."
+    }
+  },
+  "academy": {
+    "subtitle": "{done} of {total} lessons completed.",
+    "completed": "Completed",
+    "steps": "{n} steps",
+    "back": "Lessons",
+    "next": "Next",
+    "finish": "Finish lesson",
+    "correct": "Correct!",
+    "tryAgain": "Not quite — try again.",
+    "lessons": {
+      "checkmate-basics": {
+        "title": "Checkmate basics",
+        "summary": "Deliver mate with a rook and a queen.",
+        "s1": "Checkmate ends the game: the king is attacked and has no way to escape, block or capture the attacker.",
+        "s2": "This is a back-rank mate. The rook gives check along the first rank and the black king is trapped behind its own pawns.",
+        "s3": "Your turn: the black king is boxed in by its pawns. Find the checkmate in one move.",
+        "s4": "The king and queen work together. Find the move that checks the king while it cannot capture the queen."
+      },
+      "forks": {
+        "title": "Forks",
+        "summary": "Attack two pieces at once with a knight.",
+        "s1": "A fork is a single move that attacks two or more enemy pieces. Knights are excellent at it because they jump.",
+        "s2": "The knight on f7 checks the king and attacks the queen at the same time. Black must save the king, then White takes the queen.",
+        "s3": "Find the knight move that attacks both the king and the queen."
+      },
+      "opening-principles": {
+        "title": "Opening principles",
+        "summary": "Control the center and develop your pieces.",
+        "s1": "In the opening, fight for the center, develop your knights and bishops, and get your king to safety.",
+        "s2": "Play a good first move that fights for the center or develops a piece.",
+        "s3": "Black has taken space in the center. Develop a knight toward the center.",
+        "s4": "Well done. Remember: center, development, king safety."
+      }
+    }
+  },
+  "themes": {
+    "subtitle": "Choose how your board and pieces look.",
+    "boardTitle": "Board",
+    "boardDesc": "Square colors, highlights and coordinates.",
+    "piecesTitle": "Pieces",
+    "piecesDesc": "Piece colors. Board and pieces are chosen independently.",
+    "external": "Importing external theme packages (.cctheme) is not available yet.",
+    "board": {
+      "classic": "Classic",
+      "slate": "Slate",
+      "forest": "Forest",
+      "midnight": "Midnight"
+    },
+    "pieces": {
+      "ivory": "Ivory",
+      "gold": "Gold",
+      "ice": "Ice",
+      "neon": "Neon"
+    }
+  },
+  "settings": {
+    "appearance": "Appearance",
+    "colorMode": "Color mode",
+    "modeSystem": "Follow system",
+    "modeLight": "Light",
+    "modeDark": "Dark",
+    "accent": "Accent color",
+    "reduceMotion": "Reduce motion and effects",
+    "qualityLabel": "Graphics quality",
+    "qualityAuto": "Automatic",
+    "qualityHigh": "High",
+    "qualityLow": "Low (saves memory and battery)",
+    "qualityHint": "Limits the board’s pixel density.",
+    "language": "Language",
+    "languageHint": "Current: {current}. System language: {system}. Translations are not installed yet; English is used.",
+    "game": "Game",
+    "defaultTc": "Default time control",
+    "allowUndo": "Allow taking back moves",
+    "about": "About",
+    "aboutText": "CaissoraChess is free, has no ads and keeps your data on this device."
+  }
+}

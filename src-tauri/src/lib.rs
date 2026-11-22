@@ -18,6 +18,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::board_legal_moves,
             commands::board_play,
+            commands::game_draw_status,
             commands::engine_start,
             commands::engine_set_strength,
             commands::engine_new_game,
@@ -28,6 +29,10 @@ pub fn run() {
             commands::practice_start,
             commands::practice_move,
             commands::practice_hint,
+            commands::openings_saved,
+            commands::openings_set_saved,
+            commands::games_save,
+            commands::games_list,
             commands::settings_get_all,
             commands::settings_set,
         ])
