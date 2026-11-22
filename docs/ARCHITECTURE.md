@@ -32,11 +32,23 @@ effettivamente proponibili sono quelli delle partizioni già scaricate, e la UI 
 "N di 62 partizioni cercate".
 
 ## Stato dei moduli
-Fatto e testato (22 test): regole (`chess`), Opening Explorer backend (lettura Parquet, import SQLite
+Fatto e testato (25 test unitari + 13 di integrazione): regole (`chess`), Opening Explorer backend (lettura Parquet, import SQLite
 transazionale, ricerca per nome/ECO, Guided/Recall con distinzione illegale/deviazione), Puzzle
 (streaming zstd+CSV, sessione con prima mossa dell'avversario, matti alternativi accettati),
-indice puzzle + filtri di Bloom + strumento di generazione.
+indice puzzle + filtri di Bloom + strumento di generazione, gestore UCI asincrono (`engine`).
 
-**Non ancora realizzato**: guscio Tauri 2, frontend/design system, gestore UCI e integrazione Stockfish
-(desktop e Android), personalità, difficoltà adattiva, tornei, archivi, Academy, renderer e formato
+**Non ancora realizzato**: guscio Tauri 2, frontend/design system, integrazione Stockfish 19 ufficiale
+(binari desktop e Android; il ponte JNI Android), personalità, difficoltà adattiva, tornei, archivi, Academy, renderer e formato
 `.cctheme`, localizzazione, migrazioni DB complete, backup `.caissora`, download con cache.
+
+## Gestore UCI (`crates/core/src/engine`)
+Il protocollo è separato dal trasporto: `EngineIo` = coppia di canali (comandi / righe). Desktop:
+processo figlio (`spawn_process`, `kill_on_drop`). Android: un ponte JNI riempirà gli stessi canali
+(da realizzare). Verificato: handshake `uci/uciok` + `isready/readyok` con timeout di 10 s, opzioni
+lette dall'engine e validate prima dell'invio (tipo, min/max, valori combo), limiti Elo presi da
+`UCI_Elo` (mai fissati a mano), MultiPV, `stop` da un altro task, rifiuto di comandi con a-capo,
+errori espliciti per crash e silenzio dell'engine, riavvio.
+
+**Avvertenza**: i test girano contro **Stockfish 16** (pacchetto apt), perché il binario ufficiale 19
+non era scaricabile nell'ambiente di sviluppo. Il protocollo è lo stesso, ma i test vanno rieseguiti
+con il 19: `CAISSORA_STOCKFISH=/percorso/stockfish cargo test -p caissora-core --test engine`.

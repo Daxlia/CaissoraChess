@@ -2,7 +2,9 @@
 
 ## Core e strumenti (funziona ovunque ci sia Rust ≥ 1.85)
 ```bash
-cargo test --workspace                 # 22 test; usa caissora_data/openings/openings.parquet del repo
+cargo test --workspace   # usa caissora_data/openings/openings.parquet del repo
+# i test del motore usano CAISSORA_STOCKFISH (default /usr/games/stockfish);
+# CAISSORA_SKIP_ENGINE_TESTS=1 li esclude esplicitamente
 cargo build --release -p puzzle-index
 ```
 

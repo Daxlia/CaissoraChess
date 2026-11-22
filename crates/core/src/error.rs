@@ -11,6 +11,10 @@ pub enum Error {
     IllegalMove(String),
     #[error("invalid data: {0}")]
     Data(String),
+    #[error("engine error: {0}")]
+    Engine(String),
+    #[error("engine timeout: {0}")]
+    EngineTimeout(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("csv error: {0}")]
