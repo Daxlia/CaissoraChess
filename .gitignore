@@ -1,3 +1,5 @@
 target/
 *.tmp
 node_modules/
+src-tauri/binaries/
+src-tauri/android-libs/
