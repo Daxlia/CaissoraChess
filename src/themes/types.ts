@@ -21,7 +21,7 @@ export interface BoardSpec {
 export interface Motion { style: "slide" | "arc" | "hop"; durationMs?: number; easing?: "linear" | "ease-out" | "ease-in-out" | "spring"; lift?: number; squash?: number; trail?: { color: string; length?: number; width?: number }; impact?: { color: string; size?: number } }
 export interface PieceSpec {
   source: string; resolutions?: string[]; baseSize?: number; scale?: number; anchor?: { x: number; y: number }; offsetY?: number;
-  recolor?: { white?: string; black?: string }; frames?: { count: number; fps: number };
+  frames?: { count: number; fps: number };
   shadow?: { color: string; opacity: number; blur?: number; scale?: number };
   idle?: { style: "float" | "breathe" | "glow" | "frames"; amplitude?: number; periodSeconds?: number; color?: string };
   motion?: Motion; capture?: { effect: "fade" | "burst" | "shatter" | "dissolve"; color?: string; particles?: number; durationMs?: number };

@@ -228,9 +228,6 @@ pub struct PieceSpec {
     /// Spostamento verticale in caselle (positivo = verso il basso).
     #[serde(default)]
     pub offset_y: f32,
-    /// Solo per SVG: ricolora il corpo dei pezzi.
-    #[serde(default)]
-    pub recolor: Option<Recolor>,
     /// Lo sprite è una striscia orizzontale di fotogrammi animati.
     #[serde(default)]
     pub frames: Option<Frames>,
@@ -249,9 +246,6 @@ fn d_anchor() -> Anchor { Anchor { x: 0.5, y: 0.5 } }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Anchor { pub x: f32, pub y: f32 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Recolor { pub white: Option<String>, pub black: Option<String> }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Frames { pub count: u32, pub fps: f32 }
@@ -460,7 +454,6 @@ pub fn validate_manifest(m: &Manifest) -> Result<Vec<String>> {
         range("pieces.anchor.x", p.anchor.x, 0.0, 1.0)?;
         range("pieces.anchor.y", p.anchor.y, 0.0, 1.0)?;
         range("pieces.offsetY", p.offset_y, -1.0, 1.0)?;
-        if let Some(r) = &p.recolor { opt_color("pieces.recolor.white", &r.white)?; opt_color("pieces.recolor.black", &r.black)?; }
         if let Some(f) = &p.frames { if !(2..=120).contains(&f.count) { return bad("pieces.frames.count must be 2-120"); } range("pieces.frames.fps", f.fps, 1.0, 60.0)?; }
         if let Some(s) = &p.shadow { color("pieces.shadow.color", &s.color)?; range("pieces.shadow.opacity", s.opacity, 0.0, 1.0)?; range("pieces.shadow.blur", s.blur, 0.0, 1.0)?; range("pieces.shadow.scale", s.scale, 0.2, 2.0)?; }
         if let Some(i) = &p.idle {
@@ -482,7 +475,6 @@ pub fn validate_manifest(m: &Manifest) -> Result<Vec<String>> {
             for r in &p.resolutions {
                 let path = piece_path(p, pc, r);
                 asset_ref("pieces.source", &path)?;
-                if p.recolor.is_some() && ext(&path) != "svg" { return bad("pieces.recolor works only with svg sources"); }
                 refs.push(path);
             }
         }
@@ -704,7 +696,7 @@ mod tests {
     fn accepts_full_piece_theme_with_svg_and_animation() {
         let mut files: Vec<(String, Vec<u8>)> = PIECES.iter().map(|p| (format!("p/{p}.svg"), SVG.to_vec())).collect();
         let json = r##"{"format":1,"id":"svg-set","name":"S","version":"2.1.0","author":"a","license":"CC0-1.0",
-          "pieces":{"source":"p/{piece}.svg","recolor":{"white":"#ffd","black":"#223"},"shadow":{"color":"#000","opacity":0.3},
+          "pieces":{"source":"p/{piece}.svg","shadow":{"color":"#000","opacity":0.3},
           "idle":{"style":"float","amplitude":0.02},"motion":{"style":"arc","durationMs":300,"lift":0.4,"trail":{"color":"#0ff"}},"capture":{"effect":"burst"}}}"##;
         files.push(("theme.json".into(), json.as_bytes().to_vec()));
         let refs: Vec<(&str, &[u8])> = files.iter().map(|(n, d)| (n.as_str(), d.as_slice())).collect();
