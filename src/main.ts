@@ -4,6 +4,7 @@ import { clear, h } from "./dom";
 import { ICONS } from "./icons";
 import { t } from "./i18n";
 import { getSetting, loadSettings } from "./settings";
+import { activeIds, loadTheme, refreshThemes } from "./themes/registry";
 import { applyAccent, applyMode, applyReducedMotion, type Mode } from "./theme";
 import type { View } from "./views/types";
 
@@ -22,6 +23,9 @@ async function boot(): Promise<void> {
   const app = document.getElementById("app")!;
   try {
     await loadSettings();
+    await refreshThemes();
+    const ids = activeIds();
+    await Promise.all([loadTheme(ids.board), loadTheme(ids.pieces)]); // la prima scacchiera si disegna subito, senza attese
   } catch (e) {
     app.append(h("div", { class: "main" }, h("div", { class: "error-box" }, t("app.startFailed", { error: errText(e) }))));
     return;

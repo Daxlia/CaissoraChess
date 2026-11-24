@@ -35,6 +35,10 @@ pub fn run() {
             commands::games_list,
             commands::settings_get_all,
             commands::settings_set,
+            commands::themes_import,
+            commands::themes_list,
+            commands::themes_remove,
+            commands::theme_asset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running CaissoraChess");

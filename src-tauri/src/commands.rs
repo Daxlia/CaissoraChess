@@ -3,6 +3,7 @@ use caissora_core::{
     chess::{Board, GameStatus, Side},
     db, download, games,
     engine::{parse::Score, spawn_process, Engine, GoParams, Position},
+    theme,
     openings::{self, Opening, Practice, PracticeMode, Verdict, OPENINGS_URL},
 };
 use serde::Serialize;
@@ -240,4 +241,32 @@ pub fn games_save(state: State<'_, AppState>, opponent: String, engine_elo: Opti
 #[tauri::command]
 pub fn games_list(state: State<'_, AppState>) -> Res<Vec<games::Game>> {
     games::list(&state.db.lock().unwrap(), 200).map_err(s)
+}
+
+// ------------------------------------------------------------------ temi (.cctheme)
+
+/// Id dei temi incorporati: non sovrascrivibili da un file importato.
+const BUILTIN_THEMES: &[&str] = &["classic", "obsidian", "neon", "glacier", "ivory-ebony", "emerald"];
+
+/// Il file arriva come corpo binario grezzo; viene validato per intero prima di scrivere su disco.
+#[tauri::command]
+pub fn themes_import(state: State<'_, AppState>, request: tauri::ipc::Request<'_>) -> Res<theme::Installed> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("expected the raw bytes of a .cctheme file".into()) };
+    let conn = state.db.lock().unwrap();
+    theme::install(&conn, &state.data_dir, bytes, BUILTIN_THEMES).map_err(s)
+}
+
+#[tauri::command]
+pub fn themes_list(state: State<'_, AppState>) -> Res<Vec<theme::Installed>> {
+    theme::list(&state.db.lock().unwrap()).map_err(s)
+}
+
+#[tauri::command]
+pub fn themes_remove(state: State<'_, AppState>, id: String) -> Res<()> {
+    theme::remove(&state.db.lock().unwrap(), &state.data_dir, &id).map_err(s)
+}
+
+#[tauri::command]
+pub fn theme_asset(state: State<'_, AppState>, id: String, path: String) -> Res<tauri::ipc::Response> {
+    theme::read_asset(&state.data_dir, &id, &path).map(tauri::ipc::Response::new).map_err(s)
 }

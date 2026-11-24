@@ -9,6 +9,7 @@ pub mod id_filter;
 pub mod openings;
 pub mod puzzle;
 pub mod puzzle_index;
+pub mod theme;
 
 pub use error::{Error, Result};
 pub use rusqlite; // riesportato: stessa versione ovunque

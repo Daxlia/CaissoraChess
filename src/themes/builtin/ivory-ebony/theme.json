@@ -1,0 +1,40 @@
+{
+  "format": 1,
+  "id": "ivory-ebony",
+  "name": "Ivory & Ebony",
+  "version": "1.0.0",
+  "author": "CaissoraChess",
+  "license": "CC0-1.0",
+  "description": "Glossy rendered pieces in ivory and ebony. Pieces only: combine them with any board.",
+  "pieces": {
+    "source": "pieces/{res}/{piece}.webp",
+    "resolutions": [
+      "1x",
+      "2x"
+    ],
+    "baseSize": 256,
+    "scale": 1.12,
+    "anchor": {
+      "x": 0.5,
+      "y": 0.52
+    },
+    "shadow": {
+      "color": "#000000",
+      "opacity": 0.45,
+      "blur": 0.6,
+      "scale": 0.8
+    },
+    "motion": {
+      "style": "slide",
+      "durationMs": 230,
+      "easing": "ease-out",
+      "lift": 0.0,
+      "squash": 0.0
+    },
+    "capture": {
+      "effect": "fade",
+      "durationMs": 260,
+      "particles": 8
+    }
+  }
+}

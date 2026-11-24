@@ -11,7 +11,7 @@
   },
   "app": {
     "windows": [
-      { "label": "main", "title": "CaissoraChess", "width": 1280, "height": 820, "minWidth": 360, "minHeight": 560, "resizable": true }
+      { "label": "main", "title": "CaissoraChess", "width": 1280, "height": 820, "minWidth": 360, "minHeight": 560, "resizable": true, "dragDropEnabled": false }
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost"

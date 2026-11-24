@@ -52,6 +52,20 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX idx_games_played_at ON games(played_at);
     ",
+    // v2: temi importati (.cctheme)
+    "
+    CREATE TABLE themes (
+        id               TEXT PRIMARY KEY NOT NULL,
+        name             TEXT NOT NULL,
+        version          TEXT NOT NULL,
+        author           TEXT NOT NULL,
+        license          TEXT NOT NULL,
+        provides_board   INTEGER NOT NULL CHECK (provides_board IN (0,1)),
+        provides_pieces  INTEGER NOT NULL CHECK (provides_pieces IN (0,1)),
+        installed_at     TEXT NOT NULL DEFAULT (datetime('now')),
+        manifest         TEXT NOT NULL
+    ) WITHOUT ROWID;
+    ",
 ];
 
 pub fn latest_version() -> u32 {

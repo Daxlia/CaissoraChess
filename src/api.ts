@@ -10,6 +10,8 @@ export interface PracticeStart { fen: string; opponent_moves: string[]; hint: [s
 export interface PracticeStep { verdict: "on_line" | "deviation" | "illegal"; expected: string | null; opponent_reply: string | null; finished: boolean; fen: string; hint: [string, string] | null }
 export interface GameRow { id: number; played_at: string; opponent: string; engine_elo: number | null; time_control: string; user_is_white: boolean; result: string; moves_uci: string }
 
+export interface InstalledTheme { id: string; installed_at: string; manifest: unknown }
+
 export const api = {
   legalMoves: (fen: string) => invoke<string[]>("board_legal_moves", { fen }),
   play: (fen: string, uci: string) => invoke<BoardAfter>("board_play", { fen, uci }),
@@ -30,6 +32,10 @@ export const api = {
   gamesList: () => invoke<GameRow[]>("games_list"),
   settingsAll: () => invoke<Record<string, string>>("settings_get_all"),
   settingsSet: (key: string, value: string) => invoke<void>("settings_set", { key, value }),
+  themesImport: (bytes: Uint8Array) => invoke<InstalledTheme>("themes_import", bytes),
+  themesList: () => invoke<InstalledTheme[]>("themes_list"),
+  themesRemove: (id: string) => invoke<void>("themes_remove", { id }),
+  themeAsset: async (id: string, path: string): Promise<ArrayBuffer> => invoke<ArrayBuffer>("theme_asset", { id, path }),
   onDownloadProgress: (cb: (p: { name: string; done: number; total: number | null }) => void): Promise<UnlistenFn> =>
     listen("download-progress", (e) => cb(e.payload as { name: string; done: number; total: number | null })),
 };

@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "id": "classic",
+  "name": "Classic Wood",
+  "version": "1.0.0",
+  "author": "CaissoraChess",
+  "license": "CC0-1.0",
+  "description": "Walnut and maple board with the familiar vector pieces. Light, fast and crisp at any size.",
+  "board": {
+    "scene": {
+      "gradient": {
+        "kind": "radial",
+        "stops": [
+          {
+            "at": 0,
+            "color": "#2d241b"
+          },
+          {
+            "at": 1,
+            "color": "#100c09"
+          }
+        ]
+      }
+    },
+    "frame": {
+      "width": 0.34,
+      "paint": {
+        "color": "#3a2c20",
+        "texture": "frame.webp"
+      },
+      "bevel": 0.7
+    },
+    "squares": {
+      "light": {
+        "color": "#ecd9b0",
+        "texture": "light.webp"
+      },
+      "dark": {
+        "color": "#a87c50",
+        "texture": "dark.webp"
+      },
+      "gloss": 0.14,
+      "bevel": 0.18
+    },
+    "highlights": {
+      "style": "fill",
+      "lastMove": "rgba(246,226,90,0.5)",
+      "selected": "rgba(80,160,255,0.5)",
+      "legal": "rgba(30,20,10,0.38)",
+      "check": "rgba(235,60,60,0.7)",
+      "hint": "#2fbf71"
+    },
+    "coordinates": {
+      "placement": "frame",
+      "color": "rgba(240,226,200,0.85)"
+    },
+    "ambient": [
+      {
+        "type": "vignette",
+        "color": "#000000",
+        "strength": 0.35
+      }
+    ]
+  },
+  "pieces": {
+    "source": "pieces/{piece}.svg",
+    "scale": 1.0,
+    "shadow": {
+      "color": "#000000",
+      "opacity": 0.35,
+      "blur": 0.5,
+      "scale": 0.75
+    },
+    "motion": {
+      "style": "slide",
+      "durationMs": 200,
+      "easing": "ease-out"
+    },
+    "capture": {
+      "effect": "fade",
+      "durationMs": 220,
+      "particles": 8
+    }
+  }
+}

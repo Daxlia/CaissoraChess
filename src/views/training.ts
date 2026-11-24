@@ -76,6 +76,7 @@ class OpeningExplorer {
   private async show(o: Opening): Promise<void> {
     this.replay?.destroy(); this.practiceBoard?.destroy(); this.practiceBoard = null; clear(this.detail);
     this.replay = await createReplay(o.uci.split(" "));
+    if (matchMedia("(max-width: 899px)").matches) requestAnimationFrame(() => this.detail.scrollIntoView({ behavior: "smooth", block: "start" }));
     const saveBtn = h("button", { class: "btn small", type: "button" });
     const paint = () => { saveBtn.textContent = this.saved.has(o.id) ? t("openings.remove") : t("openings.save"); };
     paint();

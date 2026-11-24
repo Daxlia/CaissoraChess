@@ -1,0 +1,136 @@
+{
+  "format": 1,
+  "id": "obsidian",
+  "name": "Obsidian & Gold",
+  "version": "1.0.0",
+  "author": "CaissoraChess",
+  "license": "CC0-1.0",
+  "description": "Black and white marble under a tilted camera, brushed-gold frame, drifting gold dust and gleaming metal pieces that hop across the board.",
+  "board": {
+    "view": {
+      "tilt": 38,
+      "camera": 2.7
+    },
+    "scene": {
+      "gradient": {
+        "kind": "radial",
+        "stops": [
+          {
+            "at": 0,
+            "color": "#26252d"
+          },
+          {
+            "at": 1,
+            "color": "#040405"
+          }
+        ]
+      }
+    },
+    "frame": {
+      "width": 0.3,
+      "paint": {
+        "color": "#9a7a34",
+        "texture": "frame.webp"
+      },
+      "bevel": 0.9,
+      "glow": {
+        "color": "#ffcf70",
+        "radius": 0.35,
+        "pulseSeconds": 5
+      }
+    },
+    "squares": {
+      "light": {
+        "color": "#efeeea",
+        "texture": "light.webp"
+      },
+      "dark": {
+        "color": "#1a1b20",
+        "texture": "dark.webp"
+      },
+      "gloss": 0.6,
+      "bevel": 0.1
+    },
+    "highlights": {
+      "style": "glow",
+      "lastMove": "rgba(255,205,100,0.6)",
+      "selected": "rgba(255,236,170,0.75)",
+      "legal": "rgba(255,205,100,0.85)",
+      "check": "rgba(255,70,60,0.85)",
+      "hint": "#ffe38a"
+    },
+    "coordinates": {
+      "placement": "frame",
+      "color": "rgba(60,40,10,0.9)"
+    },
+    "ambient": [
+      {
+        "type": "sweep",
+        "color": "#fff3d6",
+        "periodSeconds": 9,
+        "opacity": 0.35,
+        "width": 0.22
+      },
+      {
+        "type": "particles",
+        "color": "#ffd98a",
+        "count": 32,
+        "size": 0.007,
+        "speed": 0.025,
+        "direction": "up",
+        "glow": 0.8
+      },
+      {
+        "type": "vignette",
+        "color": "#000000",
+        "strength": 0.55
+      }
+    ]
+  },
+  "pieces": {
+    "source": "pieces/{res}/{piece}.webp",
+    "resolutions": [
+      "1x",
+      "2x"
+    ],
+    "baseSize": 256,
+    "scale": 1.12,
+    "anchor": {
+      "x": 0.5,
+      "y": 0.52
+    },
+    "shadow": {
+      "color": "#000000",
+      "opacity": 0.45,
+      "blur": 0.6,
+      "scale": 0.8
+    },
+    "idle": {
+      "style": "float",
+      "amplitude": 0.012,
+      "periodSeconds": 4.2
+    },
+    "motion": {
+      "style": "arc",
+      "durationMs": 420,
+      "easing": "ease-in-out",
+      "lift": 0.5,
+      "squash": 0.1,
+      "trail": {
+        "color": "#ffcf70",
+        "length": 0.5,
+        "width": 0.16
+      },
+      "impact": {
+        "color": "#ffcf70",
+        "size": 0.7
+      }
+    },
+    "capture": {
+      "effect": "shatter",
+      "color": "#ffcf70",
+      "particles": 34,
+      "durationMs": 600
+    }
+  }
+}

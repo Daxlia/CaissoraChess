@@ -1,0 +1,126 @@
+{
+  "format": 1,
+  "id": "glacier",
+  "name": "Glacier",
+  "version": "1.0.0",
+  "author": "CaissoraChess",
+  "license": "CC0-1.0",
+  "description": "Frozen blue marble with a frosted-metal frame, falling snow, a slow light sweep and frosted-glass pieces that breathe.",
+  "board": {
+    "view": {
+      "tilt": 42,
+      "camera": 2.5
+    },
+    "scene": {
+      "gradient": {
+        "kind": "radial",
+        "stops": [
+          {
+            "at": 0,
+            "color": "#eaf5fb"
+          },
+          {
+            "at": 1,
+            "color": "#7da3c2"
+          }
+        ]
+      }
+    },
+    "frame": {
+      "width": 0.28,
+      "paint": {
+        "color": "#a9c6dc",
+        "texture": "frame.webp"
+      },
+      "bevel": 0.85
+    },
+    "squares": {
+      "light": {
+        "color": "#e8f4fb",
+        "texture": "light.webp"
+      },
+      "dark": {
+        "color": "#4d86b0",
+        "texture": "dark.webp"
+      },
+      "gloss": 0.65,
+      "bevel": 0.12
+    },
+    "highlights": {
+      "style": "ring",
+      "lastMove": "rgba(255,255,255,0.75)",
+      "selected": "rgba(255,255,255,0.95)",
+      "legal": "rgba(255,255,255,0.9)",
+      "check": "rgba(255,70,70,0.85)",
+      "hint": "#1fae6a"
+    },
+    "coordinates": {
+      "placement": "frame",
+      "color": "rgba(24,60,92,0.85)"
+    },
+    "ambient": [
+      {
+        "type": "sweep",
+        "color": "#ffffff",
+        "periodSeconds": 10,
+        "opacity": 0.4,
+        "width": 0.2
+      },
+      {
+        "type": "particles",
+        "color": "#ffffff",
+        "count": 70,
+        "size": 0.006,
+        "speed": 0.03,
+        "direction": "drift",
+        "glow": 0.4
+      },
+      {
+        "type": "vignette",
+        "color": "#0b2a44",
+        "strength": 0.3
+      }
+    ]
+  },
+  "pieces": {
+    "source": "pieces/{res}/{piece}.webp",
+    "resolutions": [
+      "1x",
+      "2x"
+    ],
+    "baseSize": 256,
+    "scale": 1.12,
+    "anchor": {
+      "x": 0.5,
+      "y": 0.52
+    },
+    "shadow": {
+      "color": "#12365a",
+      "opacity": 0.35,
+      "blur": 0.7,
+      "scale": 0.85
+    },
+    "idle": {
+      "style": "breathe",
+      "amplitude": 0.02,
+      "periodSeconds": 3.6
+    },
+    "motion": {
+      "style": "arc",
+      "durationMs": 360,
+      "easing": "ease-out",
+      "lift": 0.32,
+      "squash": 0.06,
+      "impact": {
+        "color": "#ffffff",
+        "size": 0.6
+      }
+    },
+    "capture": {
+      "effect": "dissolve",
+      "color": "#ffffff",
+      "particles": 40,
+      "durationMs": 600
+    }
+  }
+}
