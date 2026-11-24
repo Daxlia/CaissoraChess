@@ -60,6 +60,22 @@ pub struct BoardSpec {
     pub coordinates: Coordinates,
     #[serde(default)]
     pub ambient: Vec<Ambient>,
+    /// Luci della scena 3D (ignorate nella vista 2D).
+    #[serde(default)]
+    pub lighting: Lighting,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Lighting {
+    #[serde(default)]
+    pub exposure: Option<f32>,
+    #[serde(default)]
+    pub environment: Option<f32>,
+    #[serde(default)]
+    pub key: Option<String>,
+    #[serde(default)]
+    pub fill: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -213,7 +229,12 @@ pub enum ParticleDirection { Up, #[default] Down, Drift }
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct PieceSpec {
     /// Modello del percorso, con `{piece}` (wK, bQ…) ed eventualmente `{res}` (1x, 2x…).
-    pub source: String,
+    /// Sprite 2D: modello del percorso con {piece} (e opz. {res}). Alternativo a `model`.
+    #[serde(default)]
+    pub source: Option<String>,
+    /// Pezzi 3D procedurali (scena WebGL). Alternativo a `source`.
+    #[serde(default)]
+    pub model: Option<Model>,
     #[serde(default = "d_res")]
     pub resolutions: Vec<String>,
     /// Lato in pixel dello sprite alla risoluzione 1x.
@@ -243,6 +264,44 @@ pub struct PieceSpec {
 fn d_res() -> Vec<String> { vec!["1x".into()] }
 fn d_base() -> u32 { 256 }
 fn d_anchor() -> Anchor { Anchor { x: 0.5, y: 0.5 } }
+/// Pezzi 3D procedurali (stile Staunton) con materiali fisici.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Model {
+    #[serde(default)]
+    pub style: ModelStyle,
+    pub white: Material,
+    pub black: Material,
+    #[serde(default = "d_one")]
+    pub scale: f32,
+}
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelStyle { #[default] Staunton }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Material {
+    pub color: String,
+    #[serde(default)]
+    pub metalness: f32,
+    #[serde(default = "d_rough")]
+    pub roughness: f32,
+    #[serde(default)]
+    pub clearcoat: f32,
+    #[serde(default)]
+    pub transmission: f32,
+    #[serde(default = "d_ior")]
+    pub ior: f32,
+    #[serde(default)]
+    pub emissive: Option<String>,
+    #[serde(default)]
+    pub emissive_intensity: f32,
+    #[serde(default = "d_one")]
+    pub opacity: f32,
+}
+fn d_rough() -> f32 { 0.4 }
+fn d_ior() -> f32 { 1.5 }
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Anchor { pub x: f32, pub y: f32 }
@@ -412,6 +471,9 @@ pub fn validate_manifest(m: &Manifest) -> Result<Vec<String>> {
         range("board.view.tilt", b.view.tilt, 0.0, 65.0)?;
         range("board.view.camera", b.view.camera, 1.2, 8.0)?;
         paint("board.scene", &b.scene, &mut refs)?;
+        if let Some(e) = b.lighting.exposure { range("board.lighting.exposure", e, 0.2, 2.5)?; }
+        if let Some(e) = b.lighting.environment { range("board.lighting.environment", e, 0.0, 2.0)?; }
+        opt_color("board.lighting.key", &b.lighting.key)?; opt_color("board.lighting.fill", &b.lighting.fill)?;
         if let Some(f) = &b.frame {
             range("board.frame.width", f.width, 0.0, 0.8)?;
             range("board.frame.bevel", f.bevel, 0.0, 1.0)?;
@@ -444,8 +506,19 @@ pub fn validate_manifest(m: &Manifest) -> Result<Vec<String>> {
     }
 
     if let Some(p) = &m.pieces {
-        let has_res = p.source.contains("{res}");
-        if !p.source.contains("{piece}") { return bad("pieces.source must contain {piece}"); }
+        if p.source.is_some() == p.model.is_some() { return bad("pieces needs exactly one of 'source' (2D sprites) or 'model' (3D)"); }
+        if let Some(md) = &p.model {
+            range("pieces.model.scale", md.scale, 0.6, 1.4)?;
+            for (n, mt) in [("white", &md.white), ("black", &md.black)] {
+                color(&format!("pieces.model.{n}.color"), &mt.color)?; opt_color(&format!("pieces.model.{n}.emissive"), &mt.emissive)?;
+                range(&format!("pieces.model.{n}.metalness"), mt.metalness, 0.0, 1.0)?; range(&format!("pieces.model.{n}.roughness"), mt.roughness, 0.0, 1.0)?;
+                range(&format!("pieces.model.{n}.clearcoat"), mt.clearcoat, 0.0, 1.0)?; range(&format!("pieces.model.{n}.transmission"), mt.transmission, 0.0, 1.0)?;
+                range(&format!("pieces.model.{n}.ior"), mt.ior, 1.0, 2.5)?; range(&format!("pieces.model.{n}.emissiveIntensity"), mt.emissive_intensity, 0.0, 3.0)?; range(&format!("pieces.model.{n}.opacity"), mt.opacity, 0.1, 1.0)?;
+            }
+        }
+        let source = p.source.clone().unwrap_or_else(|| "x/{piece}.png".into());
+        let has_res = source.contains("{res}");
+        if !source.contains("{piece}") { return bad("pieces.source must contain {piece}"); }
         if !(1..=4).contains(&p.resolutions.len()) { return bad("pieces.resolutions needs 1 to 4 entries"); }
         for r in &p.resolutions { if !(r.len() == 2 && r.as_bytes()[0].is_ascii_digit() && (b'1'..=b'8').contains(&r.as_bytes()[0]) && r.ends_with('x')) { return bad(format!("pieces.resolutions: '{r}' is not like 1x, 2x, 4x")); } }
         if !has_res && p.resolutions.len() != 1 { return bad("pieces.source has no {res}, so exactly one resolution is allowed"); }
@@ -471,19 +544,19 @@ pub fn validate_manifest(m: &Manifest) -> Result<Vec<String>> {
             if !(4..=120).contains(&c.particles) { return bad("pieces.capture.particles must be 4-120"); }
             if !(120..=1500).contains(&c.duration_ms) { return bad("pieces.capture.durationMs must be 120-1500"); }
         }
-        for pc in PIECES {
+        if p.source.is_some() { for pc in PIECES {
             for r in &p.resolutions {
                 let path = piece_path(p, pc, r);
                 asset_ref("pieces.source", &path)?;
                 refs.push(path);
             }
-        }
+        } }
     }
     refs.sort(); refs.dedup();
     Ok(refs)
 }
 
-pub fn piece_path(p: &PieceSpec, piece: &str, res: &str) -> String { p.source.replace("{piece}", piece).replace("{res}", res) }
+pub fn piece_path(p: &PieceSpec, piece: &str, res: &str) -> String { p.source.clone().unwrap_or_default().replace("{piece}", piece).replace("{res}", res) }
 
 // ------------------------------------------------------------------ immagini
 
@@ -701,6 +774,17 @@ mod tests {
         files.push(("theme.json".into(), json.as_bytes().to_vec()));
         let refs: Vec<(&str, &[u8])> = files.iter().map(|(n, d)| (n.as_str(), d.as_slice())).collect();
         read_package(&zip_of(&refs)).unwrap();
+    }
+
+    #[test]
+    fn accepts_3d_model_pieces_and_rejects_both_or_neither() {
+        let ok = r##"{"format":1,"id":"model-set","name":"M","version":"1.0.0","author":"a","license":"CC0-1.0",
+          "pieces":{"model":{"white":{"color":"#fff","roughness":0.3,"clearcoat":0.5},"black":{"color":"#111","metalness":0.8}},"motion":{"style":"arc","lift":0.5}}}"##;
+        read_package(&zip_of(&[("theme.json", ok.as_bytes())])).unwrap();
+        let both = ok.replace("\"model\":", "\"source\":\"p/{piece}.svg\",\"model\":");
+        assert!(read_package(&zip_of(&[("theme.json", both.as_bytes())])).unwrap_err().to_string().contains("exactly one"));
+        let bad_rough = ok.replace("0.3", "4");
+        assert!(read_package(&zip_of(&[("theme.json", bad_rough.as_bytes())])).unwrap_err().to_string().contains("roughness"));
     }
 
     fn rejects(json: &str, needle: &str) {

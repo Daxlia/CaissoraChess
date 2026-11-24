@@ -14,13 +14,16 @@ export type Ambient =
   | { type: "vignette"; color: string; strength?: number };
 export interface BoardSpec {
   view?: { tilt?: number; camera?: number };
+  lighting?: { exposure?: number; environment?: number; key?: string; fill?: string };
   scene?: Paint; frame?: Frame; squares: Squares; highlights?: Highlights;
   coordinates?: { visible?: boolean; color?: string; placement?: "inside" | "frame" };
   ambient?: Ambient[];
 }
 export interface Motion { style: "slide" | "arc" | "hop"; durationMs?: number; easing?: "linear" | "ease-out" | "ease-in-out" | "spring"; lift?: number; squash?: number; trail?: { color: string; length?: number; width?: number }; impact?: { color: string; size?: number } }
+export interface PieceMaterial { color: string; metalness?: number; roughness?: number; clearcoat?: number; transmission?: number; ior?: number; emissive?: string; emissiveIntensity?: number; opacity?: number }
+export interface PieceModel { style?: "staunton"; white: PieceMaterial; black: PieceMaterial; scale?: number }
 export interface PieceSpec {
-  source: string; resolutions?: string[]; baseSize?: number; scale?: number; anchor?: { x: number; y: number }; offsetY?: number;
+  source?: string; model?: PieceModel; resolutions?: string[]; baseSize?: number; scale?: number; anchor?: { x: number; y: number }; offsetY?: number;
   frames?: { count: number; fps: number };
   shadow?: { color: string; opacity: number; blur?: number; scale?: number };
   idle?: { style: "float" | "breathe" | "glow" | "frames"; amplitude?: number; periodSeconds?: number; color?: string };

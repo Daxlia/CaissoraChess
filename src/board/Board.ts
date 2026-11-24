@@ -10,6 +10,7 @@ import { frameWidth, paintFlat, paintScene } from "../themes/paint";
 import { PieceSet, pieceId } from "../themes/pieceSprites";
 import { AmbientParticles, glowSprite, type Fx } from "../themes/fx";
 import type { LoadedTheme } from "../themes/registry";
+import type { Scene3D } from "../themes/renderer3d";
 import type { Ambient, BoardSpec, Motion } from "../themes/types";
 
 export interface BoardOptions {
@@ -55,6 +56,9 @@ export class Board {
   private quality: "low" | "auto" | "high" = "auto";
   private ambientOn = true;
   private busy = false;
+  private s3: Scene3D | null = null;
+  private mod3: typeof import("../themes/renderer3d") | null = null;
+  private sync3Token = 0;
   private particles: AmbientParticles[] = [];
   private frameMs = 0; private degraded = 0; private lastFrame = 0; private startT = performance.now();
 
@@ -74,7 +78,7 @@ export class Board {
   }
 
   destroy(): void {
-    this.ro.disconnect(); this.io.disconnect(); cancelAnimationFrame(this.raf); this.raf = 0;
+    this.ro.disconnect(); this.io.disconnect(); cancelAnimationFrame(this.raf); this.raf = 0; this.s3?.dispose();
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.canvas.remove();
   }
@@ -92,9 +96,33 @@ export class Board {
     this.boardTh = t; this.staticDirty = true; this.proj = null;
     const amb = t.manifest.board.ambient ?? [];
     this.particles = amb.filter((a): a is Extract<Ambient, { type: "particles" }> => a.type === "particles").map((a) => new AmbientParticles(a.count, a.direction ?? "down"));
-    this.resize(true); this.invalidate();
+    this.resize(true); void this.sync3D(); this.invalidate();
   }
-  setPieceTheme(t: LoadedTheme): void { if (!t.manifest.pieces) return; this.pieces = new PieceSet(t); this.invalidate(); }
+  private pieceTh: LoadedTheme | null = null;
+  setPieceTheme(t: LoadedTheme): void { if (!t.manifest.pieces) return; this.pieceTh = t; this.pieces = t.manifest.pieces.source ? new PieceSet(t) : null; void this.sync3D(); this.invalidate(); }
+
+  /** Vista 3D vera quando i pezzi sono modelli 3D o la scacchiera è inclinata; altrimenti Canvas 2D. Senza WebGL si ricade sul 2D. */
+  private async sync3D(): Promise<void> {
+    const my = ++this.sync3Token, b = this.spec, ps = this.pieceTh?.manifest.pieces;
+    if (!b || !this.boardTh) return;
+    const need = !!ps?.model || (b.view?.tilt ?? 0) > 0;
+    if (!need) { this.s3?.dispose(); this.s3 = null; this.invalidate(); return; }
+    try {
+      this.mod3 ??= await import("../themes/renderer3d");
+      if (my !== this.sync3Token) return;
+      if (!this.mod3.webglSupported()) throw new Error("no webgl");
+      this.s3?.dispose();
+      const s = new this.mod3.Scene3D(this.boardTh, Math.max(2, this.size), this.dpr, this.quality);
+      s.setPieces(this.pieceTh, this.pieces); this.s3 = s;
+    } catch {
+      this.s3 = null;
+      if (ps?.model) { // niente WebGL: i pezzi solo-3D non si possono disegnare, si usano i classici in 2D
+        const { loadTheme } = await import("../themes/registry");
+        const c = await loadTheme("classic"); if (my === this.sync3Token) { this.pieceTh = c; this.pieces = new PieceSet(c); }
+      }
+    }
+    this.invalidate();
+  }
   setFlipped(f: boolean): void { this.flipped = f; this.staticDirty = true; this.invalidate(); }
   setInteractive(v: boolean): void { this.interactive = v; if (!v) { this.selected = null; this.legal = []; } this.invalidate(); }
   setLastMove(uci: string | null): void { if (!uci) { this.lastMove = null; } else { const m = splitUci(uci); this.lastMove = [sqIndex(m.from), sqIndex(m.to)]; } this.invalidate(); }
@@ -104,7 +132,7 @@ export class Board {
   /** Abilita/disabilita le animazioni ambientali (le anteprime animano solo al passaggio del mouse). */
   setAmbient(on: boolean): void { this.ambientOn = on; this.invalidate(); }
   /** Qualità grafica: limita la densità di pixel, disattiva ambiente e animazioni idle in "low". */
-  setQuality(q: "low" | "auto" | "high"): void { this.quality = q; this.dprCap = q === "low" ? 1 : q === "high" ? 3 : 2; this.degraded = 0; this.resize(true); }
+  setQuality(q: "low" | "auto" | "high"): void { this.quality = q; this.dprCap = q === "low" ? 1 : q === "high" ? 3 : 2; this.degraded = 0; this.resize(true); void this.sync3D(); }
   get isFlipped(): boolean { return this.flipped; }
 
   private get spec(): BoardSpec | null { return this.boardTh?.manifest.board ?? null; }
@@ -149,12 +177,13 @@ export class Board {
     this.canvas.style.width = this.canvas.style.height = `${size}px`;
     this.canvas.width = this.canvas.height = Math.round(size * dpr);
     this.proj = null; this.staticDirty = true;
+    this.s3?.resize(size, dpr);
     this.invalidate();
   }
 
   private ensureProj(): Projection | null {
     if (!this.spec || !this.size) return null;
-    if (!this.proj) this.proj = new Projection(this.size, this.spec.view?.tilt ?? 0, this.spec.view?.camera ?? 2.4);
+    if (!this.proj) this.proj = new Projection(this.size, 0, 2.4);
     return this.proj;
   }
 
@@ -184,25 +213,12 @@ export class Board {
     const cv = this.staticCv; cv.width = cv.height = S;
     const g = cv.getContext("2d")!;
     paintScene(g, S, th, b);
-    const pd = new Projection(S, b.view?.tilt ?? 0, b.view?.camera ?? 2.4);
+    const pd = new Projection(S, 0, 2.4);
     const F = Math.min(2400, Math.max(256, Math.round(2 * pd.k * pd.scale(1))));
     const flat = document.createElement("canvas"); flat.width = flat.height = F;
     paintFlat(flat.getContext("2d")!, F, th, b, this.flipped);
     g.imageSmoothingQuality = "high";
-    if (pd.flat) g.drawImage(flat, pd.cx - pd.k, pd.oy - pd.k, 2 * pd.k, 2 * pd.k);
-    else {
-      const step = this.quality === "low" ? 2 : 1;
-      const top = Math.floor(pd.oy - pd.k * pd.cosT * pd.scale(-1)), bottom = Math.ceil(pd.oy + pd.k * pd.cosT * pd.scale(1));
-      const Yof = (y: number) => { const ys = (y - pd.oy) / pd.k; return (ys * pd.D) / (pd.D * pd.cosT + ys * pd.sinT); };
-      for (let y = top; y < bottom; y += step) {
-        const Y0 = Yof(y), Y1 = Yof(y + step);
-        if (Y1 < -1 || Y0 > 1) continue;
-        const c0 = Math.max(-1, Y0), c1 = Math.min(1, Y1);
-        const s = pd.scale((c0 + c1) / 2);
-        const sy = ((c0 + 1) / 2) * F; const sh = Math.max(1, Math.min(F - sy, ((c1 - c0) / 2) * F));
-        g.drawImage(flat, 0, sy, F, sh, pd.cx - pd.k * s, y, 2 * pd.k * s, step + 0.5);
-      }
-    }
+    g.drawImage(flat, pd.cx - pd.k, pd.oy - pd.k, 2 * pd.k, 2 * pd.k);
     for (const a of b.ambient ?? []) if (a.type === "vignette") {
       const gr = g.createRadialGradient(S / 2, S * 0.55, S * 0.25, S / 2, S * 0.55, S * 0.78);
       gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, withAlpha(a.color, a.strength ?? 0.5));
@@ -224,7 +240,7 @@ export class Board {
   private tick(now: number): void {
     this.raf = 0;
     if (document.hidden || !this.onScreen) return;
-    const loop = this.hasLoop || this.anim !== null || this.fx.length > 0;
+    const loop = this.hasLoop || this.anim !== null || this.fx.length > 0 || this.s3 !== null && this.s3.busy;
     const minGap = this.degraded >= 1 && this.quality !== "high" ? 33 : 15;
     if (loop && now - this.lastFrame < minGap && !this.dirty) { this.raf = requestAnimationFrame((t) => this.tick(t)); return; }
     if (this.dirty || loop) {
@@ -244,8 +260,9 @@ export class Board {
     const { g, size, dpr } = this;
     const proj = this.ensureProj(), b = this.spec;
     if (!size || !proj || !b || !this.boardTh) return;
-    if (this.staticDirty) this.buildStatic();
     const now = performance.now(), sec = (now - this.startT) / 1000;
+    if (this.s3) { this.draw3D(now); return; }
+    if (this.staticDirty) this.buildStatic();
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, this.canvas.width, this.canvas.height);
     g.drawImage(this.staticCv, 0, 0);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -258,6 +275,27 @@ export class Board {
     for (const f of this.fx) { g.save(); f.draw(g, (now - f.start) / f.dur); g.restore(); }
     if (live) this.drawParticles(b, now);
     if (this.hint) this.drawArrow(this.hint[0], this.hint[1], b.highlights?.hint ?? HL.hint);
+  }
+
+  private draw3D(now: number): void {
+    const a = this.anim;
+    let hideAt: number | null = null;
+    if (a) {
+      const k = Math.min(1, (now - a.start) / a.dur);
+      if (a.captured && !a.capDone && k >= 0.82) {
+        a.capDone = true;
+        const cap = this.pieces?.spec.capture ?? this.pieceTh?.manifest.pieces?.capture;
+        const node = this.s3!.detach(a.to);
+        const effect = this.reduceMotion || this.quality === "low" ? "fade" : cap?.effect ?? "fade";
+        this.s3!.captureFx(a.captured, a.to, effect, cap?.color ?? "#ffffff", cap?.particles ?? 16, cap?.durationMs ?? 300, node);
+      }
+      if (a.captured && a.capDone) hideAt = a.to;
+    }
+    this.s3!.render(this.g, {
+      squares: this.squares, selected: this.selected, legal: this.legal, lastMove: this.lastMove, checkSq: this.checkSq, hint: this.hint,
+      drag: this.drag, flipped: this.flipped, hideAt,
+      anim: a ? { from: a.from, to: a.to, piece: a.piece, start: a.start, dur: a.dur, m: a.m } : null,
+    }, now, this.live);
   }
 
   private corners(col: number, row: number, w = 1, h = 1, inset = 0): [number, number][] {
@@ -412,6 +450,7 @@ export class Board {
 
   private spawnImpact(a: Anim): void {
     const im = a.m.impact; if (!im || this.reduceMotion || this.quality === "low") return;
+    if (this.s3) { this.s3.impactFx(a.to, im.color, im.size ?? 0.5); this.invalidate(); return; }
     const [c, r] = this.vis(a.to);
     this.fx.push({ start: performance.now(), dur: 420, draw: (g, k) => {
       const [x, y] = this.pt(c + 0.5, r + 0.5), [w, h] = this.cellSize(c, r);
@@ -492,6 +531,7 @@ export class Board {
   // ---------------------------------------------------------------- input
 
   private squareAt(e: PointerEvent): number | null {
+    if (this.s3) { const [x, y] = this.localXY(e); return this.s3.pick(x, y); }
     const proj = this.ensureProj(); if (!proj) return null;
     const r = this.canvas.getBoundingClientRect();
     const x = ((e.clientX - r.left) / r.width) * this.size, y = ((e.clientY - r.top) / r.height) * this.size;

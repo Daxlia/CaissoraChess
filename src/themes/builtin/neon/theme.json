@@ -127,22 +127,27 @@
     ]
   },
   "pieces": {
-    "source": "pieces/{res}/{piece}.webp",
-    "resolutions": [
-      "1x",
-      "2x"
-    ],
-    "baseSize": 256,
-    "scale": 1.12,
-    "anchor": {
-      "x": 0.5,
-      "y": 0.52
-    },
-    "shadow": {
-      "color": "#19e6ff",
-      "opacity": 0.3,
-      "blur": 0.9,
-      "scale": 0.9
+    "model": {
+      "style": "staunton",
+      "white": {
+        "color": "#7df9ff",
+        "roughness": 0.05,
+        "transmission": 0.9,
+        "ior": 1.45,
+        "emissive": "#19e6ff",
+        "emissiveIntensity": 0.35,
+        "clearcoat": 1.0
+      },
+      "black": {
+        "color": "#ff5cf4",
+        "roughness": 0.05,
+        "transmission": 0.9,
+        "ior": 1.45,
+        "emissive": "#ff3df2",
+        "emissiveIntensity": 0.35,
+        "clearcoat": 1.0
+      },
+      "scale": 1.0
     },
     "idle": {
       "style": "glow",

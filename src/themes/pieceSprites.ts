@@ -23,7 +23,7 @@ export class PieceSet {
     const base = spec.baseSize ?? 256;
     let pick = res[res.length - 1]!;
     for (const r of res) if ((base * parseInt(r)) >= wPx) { pick = r; break; }
-    const path = spec.source.replace("{piece}", id).replace("{res}", pick);
+    const path = spec.source!.replace("{piece}", id).replace("{res}", pick);
     return this.theme.images.get(path)!;
   }
 

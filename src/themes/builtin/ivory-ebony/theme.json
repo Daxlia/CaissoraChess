@@ -7,34 +7,31 @@
   "license": "CC0-1.0",
   "description": "Glossy rendered pieces in ivory and ebony. Pieces only: combine them with any board.",
   "pieces": {
-    "source": "pieces/{res}/{piece}.webp",
-    "resolutions": [
-      "1x",
-      "2x"
-    ],
-    "baseSize": 256,
-    "scale": 1.12,
-    "anchor": {
-      "x": 0.5,
-      "y": 0.52
-    },
-    "shadow": {
-      "color": "#000000",
-      "opacity": 0.45,
-      "blur": 0.6,
-      "scale": 0.8
+    "model": {
+      "style": "staunton",
+      "white": {
+        "color": "#efe6d2",
+        "roughness": 0.28,
+        "clearcoat": 0.6
+      },
+      "black": {
+        "color": "#2a211d",
+        "roughness": 0.3,
+        "clearcoat": 0.7
+      },
+      "scale": 1.0
     },
     "motion": {
-      "style": "slide",
-      "durationMs": 230,
+      "style": "arc",
+      "durationMs": 300,
       "easing": "ease-out",
-      "lift": 0.0,
-      "squash": 0.0
+      "lift": 0.35,
+      "squash": 0.05
     },
     "capture": {
-      "effect": "fade",
-      "durationMs": 260,
-      "particles": 8
+      "effect": "shatter",
+      "durationMs": 500,
+      "particles": 20
     }
   }
 }

@@ -88,22 +88,21 @@
     ]
   },
   "pieces": {
-    "source": "pieces/{res}/{piece}.webp",
-    "resolutions": [
-      "1x",
-      "2x"
-    ],
-    "baseSize": 256,
-    "scale": 1.12,
-    "anchor": {
-      "x": 0.5,
-      "y": 0.52
-    },
-    "shadow": {
-      "color": "#000000",
-      "opacity": 0.45,
-      "blur": 0.6,
-      "scale": 0.8
+    "model": {
+      "style": "staunton",
+      "white": {
+        "color": "#e8c46a",
+        "metalness": 1.0,
+        "roughness": 0.18,
+        "clearcoat": 0.4
+      },
+      "black": {
+        "color": "#17171d",
+        "metalness": 0.9,
+        "roughness": 0.22,
+        "clearcoat": 0.6
+      },
+      "scale": 1.0
     },
     "idle": {
       "style": "float",

@@ -37,7 +37,7 @@ function neededPaths(m: Manifest): string[] {
   const out = new Set<string>();
   const paint = (p?: { texture?: string }) => { if (p?.texture) out.add(p.texture); };
   if (m.board) { paint(m.board.scene); paint(m.board.frame?.paint); paint(m.board.squares.light); paint(m.board.squares.dark); }
-  if (m.pieces) for (const pc of PIECE_IDS) for (const r of m.pieces.resolutions ?? ["1x"]) out.add(m.pieces.source.replace("{piece}", pc).replace("{res}", r));
+  if (m.pieces?.source) for (const pc of PIECE_IDS) for (const r of m.pieces.resolutions ?? ["1x"]) out.add(m.pieces.source.replace("{piece}", pc).replace("{res}", r));
   return [...out];
 }
 
