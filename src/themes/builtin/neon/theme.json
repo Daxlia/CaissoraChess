@@ -1,0 +1,181 @@
+{
+  "format": 1,
+  "id": "neon",
+  "name": "Neon Night",
+  "version": "1.0.0",
+  "author": "CaissoraChess",
+  "license": "CC0-1.0",
+  "description": "A dark circuit-grid board with pulsing cyan edges, floating sparks and translucent crystal pieces. Hop moves leave a magenta trail.",
+  "board": {
+    "view": {
+      "tilt": 30,
+      "camera": 2.8
+    },
+    "scene": {
+      "gradient": {
+        "kind": "radial",
+        "stops": [
+          {
+            "at": 0,
+            "color": "#1a1240"
+          },
+          {
+            "at": 1,
+            "color": "#02010a"
+          }
+        ]
+      }
+    },
+    "frame": {
+      "width": 0.2,
+      "paint": {
+        "gradient": {
+          "kind": "linear",
+          "angle": 90,
+          "stops": [
+            {
+              "at": 0,
+              "color": "#1c1844"
+            },
+            {
+              "at": 1,
+              "color": "#0a0820"
+            }
+          ]
+        }
+      },
+      "bevel": 0.5,
+      "glow": {
+        "color": "#19e6ff",
+        "radius": 0.7,
+        "pulseSeconds": 3.2
+      }
+    },
+    "squares": {
+      "light": {
+        "gradient": {
+          "kind": "linear",
+          "angle": 135,
+          "stops": [
+            {
+              "at": 0,
+              "color": "#2a2660"
+            },
+            {
+              "at": 1,
+              "color": "#1b1845"
+            }
+          ]
+        }
+      },
+      "dark": {
+        "gradient": {
+          "kind": "linear",
+          "angle": 135,
+          "stops": [
+            {
+              "at": 0,
+              "color": "#100d2e"
+            },
+            {
+              "at": 1,
+              "color": "#0a0822"
+            }
+          ]
+        }
+      },
+      "gloss": 0.4,
+      "grid": {
+        "color": "#19e6ff",
+        "width": 0.012,
+        "glow": 0.85
+      }
+    },
+    "highlights": {
+      "style": "glow",
+      "lastMove": "rgba(255,61,242,0.6)",
+      "selected": "rgba(25,230,255,0.85)",
+      "legal": "rgba(25,230,255,0.9)",
+      "check": "rgba(255,60,90,0.9)",
+      "hint": "#7dff9a"
+    },
+    "coordinates": {
+      "color": "rgba(125,249,255,0.85)"
+    },
+    "ambient": [
+      {
+        "type": "sweep",
+        "color": "#ff3df2",
+        "periodSeconds": 6,
+        "opacity": 0.22,
+        "width": 0.18
+      },
+      {
+        "type": "particles",
+        "color": "#7df9ff",
+        "count": 48,
+        "size": 0.006,
+        "speed": 0.04,
+        "direction": "up",
+        "glow": 1.0
+      },
+      {
+        "type": "vignette",
+        "color": "#000000",
+        "strength": 0.6
+      }
+    ]
+  },
+  "pieces": {
+    "model": {
+      "style": "staunton",
+      "white": {
+        "color": "#7df9ff",
+        "roughness": 0.05,
+        "transmission": 0.9,
+        "ior": 1.45,
+        "emissive": "#19e6ff",
+        "emissiveIntensity": 0.35,
+        "clearcoat": 1.0
+      },
+      "black": {
+        "color": "#ff5cf4",
+        "roughness": 0.05,
+        "transmission": 0.9,
+        "ior": 1.45,
+        "emissive": "#ff3df2",
+        "emissiveIntensity": 0.35,
+        "clearcoat": 1.0
+      },
+      "scale": 1.0
+    },
+    "idle": {
+      "style": "glow",
+      "amplitude": 0.02,
+      "periodSeconds": 2.8,
+      "color": "#7df9ff"
+    },
+    "motion": {
+      "style": "hop",
+      "durationMs": 360,
+      "easing": "spring",
+      "lift": 0.6,
+      "squash": 0.12,
+      "trail": {
+        "color": "#ff3df2",
+        "length": 0.6,
+        "width": 0.2
+      },
+      "impact": {
+        "color": "#19e6ff",
+        "size": 0.8
+      }
+    },
+    "capture": {
+      "effect": "burst",
+      "color": "#ff3df2",
+      "particles": 48,
+      "durationMs": 620
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "format": 1,
+  "id": "emerald",
+  "name": "Emerald Club",
+  "version": "1.0.0",
+  "author": "CaissoraChess",
+  "license": "CC0-1.0",
+  "description": "A flat, light board made only of gradients (no images): cream and emerald with a deep green frame. Board only.",
+  "board": {
+    "scene": {
+      "gradient": {
+        "kind": "linear",
+        "angle": 160,
+        "stops": [
+          {
+            "at": 0,
+            "color": "#16281f"
+          },
+          {
+            "at": 1,
+            "color": "#0a120e"
+          }
+        ]
+      }
+    },
+    "frame": {
+      "width": 0.3,
+      "paint": {
+        "color": "#1e3b2c",
+        "gradient": {
+          "kind": "linear",
+          "angle": 45,
+          "stops": [
+            {
+              "at": 0,
+              "color": "#2b5640"
+            },
+            {
+              "at": 1,
+              "color": "#16301f"
+            }
+          ]
+        }
+      },
+      "bevel": 0.6
+    },
+    "squares": {
+      "light": {
+        "gradient": {
+          "kind": "linear",
+          "angle": 135,
+          "stops": [
+            {
+              "at": 0,
+              "color": "#f6efd6"
+            },
+            {
+              "at": 1,
+              "color": "#e7dcb8"
+            }
+          ]
+        }
+      },
+      "dark": {
+        "gradient": {
+          "kind": "linear",
+          "angle": 135,
+          "stops": [
+            {
+              "at": 0,
+              "color": "#4a9068"
+            },
+            {
+              "at": 1,
+              "color": "#357452"
+            }
+          ]
+        }
+      },
+      "gloss": 0.2,
+      "bevel": 0.1
+    },
+    "highlights": {
+      "style": "fill",
+      "lastMove": "rgba(255,226,90,0.55)",
+      "selected": "rgba(70,150,255,0.5)",
+      "legal": "rgba(10,40,20,0.4)",
+      "check": "rgba(235,60,60,0.7)",
+      "hint": "#ffd23f"
+    },
+    "coordinates": {
+      "placement": "frame",
+      "color": "rgba(230,244,230,0.85)"
+    },
+    "ambient": []
+  }
+}

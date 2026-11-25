@@ -1,0 +1,5 @@
+Chess piece graphics "cburnett"
+Author: Colin M.L. Burnett (https://en.wikipedia.org/wiki/User:Cburnett)
+Obtained from: https://github.com/lichess-org/lila/tree/master/public/piece/cburnett
+License: GNU General Public License, version 2 or later (GPL-2.0-or-later),
+as declared by the lichess-org/lila repository (COPYING.md).

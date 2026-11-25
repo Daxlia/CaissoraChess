@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "lessons": [
+    {
+      "id": "checkmate-basics",
+      "steps": [
+        { "type": "text", "key": "academy.lessons.checkmate-basics.s1" },
+        { "type": "position", "fen": "R5k1/5ppp/8/8/8/8/5PPP/6K1 b - - 1 1", "key": "academy.lessons.checkmate-basics.s2" },
+        { "type": "exercise", "fen": "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1", "goal": "mate", "solutions": ["a1a8"], "key": "academy.lessons.checkmate-basics.s3" },
+        { "type": "exercise", "fen": "7k/8/5K2/8/8/8/8/6Q1 w - - 0 1", "goal": "mate", "solutions": ["g1g7"], "key": "academy.lessons.checkmate-basics.s4" }
+      ]
+    },
+    {
+      "id": "forks",
+      "steps": [
+        { "type": "text", "key": "academy.lessons.forks.s1" },
+        { "type": "position", "fen": "3q3k/5N2/8/8/8/8/8/4K3 b - - 1 1", "key": "academy.lessons.forks.s2" },
+        { "type": "exercise", "fen": "3q3k/8/8/4N3/8/8/8/4K3 w - - 0 1", "goal": "move", "solutions": ["e5f7"], "key": "academy.lessons.forks.s3" }
+      ]
+    },
+    {
+      "id": "opening-principles",
+      "steps": [
+        { "type": "text", "key": "academy.lessons.opening-principles.s1" },
+        { "type": "exercise", "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "goal": "move", "solutions": ["e2e4", "d2d4", "c2c4", "g1f3"], "key": "academy.lessons.opening-principles.s2" },
+        { "type": "exercise", "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", "goal": "move", "solutions": ["g1f3", "b1c3"], "key": "academy.lessons.opening-principles.s3" },
+        { "type": "text", "key": "academy.lessons.opening-principles.s4" }
+      ]
+    }
+  ]
+}
