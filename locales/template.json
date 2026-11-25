@@ -283,6 +283,10 @@
     "defaultTc": "Default time control",
     "allowUndo": "Allow taking back moves",
     "about": "About",
-    "aboutText": "CaissoraChess is free, has no ads and keeps your data on this device."
+    "aboutText": "CaissoraChess is free, has no ads and keeps your data on this device.",
+    "viewMode": "Board view",
+    "viewAuto": "Follow theme (2D or 3D)",
+    "view2d": "Always flat 2D",
+    "viewHint": "Flat 2D is lighter on battery and old graphics cards. 3D-only pieces are replaced by the classic set."
   }
 }

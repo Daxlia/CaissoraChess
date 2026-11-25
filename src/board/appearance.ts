@@ -8,8 +8,11 @@ const tokens = new WeakMap<Board, number>();
 /** Carica (se serve) e applica due temi, in modo indipendente. Un'applicazione più recente annulla quella in corso. */
 export async function applyThemes(board: Board, boardId: string, piecesId: string): Promise<void> {
   const my = (tokens.get(board) ?? 0) + 1; tokens.set(board, my);
-  const [b, p] = await Promise.all([loadTheme(boardId), loadTheme(piecesId)]);
+  const flat = getSetting("view_mode", "auto") === "2d";
+  let [b, p] = await Promise.all([loadTheme(boardId), loadTheme(piecesId)]);
+  if (flat && p.manifest.pieces?.model) p = await loadTheme("classic"); // pezzi solo-3D: in 2D si usano gli sprite classici
   if (tokens.get(board) !== my) return;
+  board.setForce2D(flat);
   board.setBoardTheme(b); board.setPieceTheme(p);
 }
 

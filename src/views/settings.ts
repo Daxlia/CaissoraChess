@@ -15,6 +15,7 @@ export async function settingsView(): Promise<View> {
   const accent = h("input", { type: "color", value: getSetting("accent", "#d9a441"), "aria-label": t("settings.accent"), onInput: (e: Event) => { const v = (e.target as HTMLInputElement).value; if (isHexColor(v)) applyAccent(v); }, onChange: (e: Event) => void save("accent", (e.target as HTMLInputElement).value) });
   const reduce = h("input", { type: "checkbox", checked: getSetting("reduce_motion", "0") === "1", onChange: (e: Event) => { const on = (e.target as HTMLInputElement).checked; void save("reduce_motion", on ? "1" : "0", () => applyReducedMotion(on)); } });
   const undo = h("input", { type: "checkbox", checked: getSetting("allow_undo", "1") === "1", onChange: (e: Event) => void save("allow_undo", (e.target as HTMLInputElement).checked ? "1" : "0") });
+  const viewMode = select("view_mode", "auto", [["auto", t("settings.viewAuto")], ["2d", t("settings.view2d")]]);
   const quality = select("quality", "auto", [["auto", t("settings.qualityAuto")], ["high", t("settings.qualityHigh")], ["low", t("settings.qualityLow")]]);
   const tc = select("default_time_control", "5+0", [["1+0", t("play.tc.bullet")], ["5+0", t("play.tc.blitz")], ["10+0", t("play.tc.rapid")], ["30+0", t("play.tc.classical")], ["unlimited", t("play.tc.unlimited")]]);
   const lang = h("select", { disabled: true }, h("option", { value: "en" }, "English"));
@@ -22,7 +23,7 @@ export async function settingsView(): Promise<View> {
   const el = h("div", { class: "view" },
     h("div", { class: "page-head" }, h("h1", {}, t("nav.settings"))),
     h("div", { class: "col", style: "max-width:640px" },
-      h("section", { class: "card col" }, h("h2", {}, t("settings.appearance")), field("settings.colorMode", mode), h("div", { class: "row" }, field("settings.accent", accent)), h("label", { class: "row" }, reduce, h("span", {}, t("settings.reduceMotion"))), field("settings.qualityLabel", quality, t("settings.qualityHint"))),
+      h("section", { class: "card col" }, h("h2", {}, t("settings.appearance")), field("settings.colorMode", mode), field("settings.viewMode", viewMode, t("settings.viewHint")), h("div", { class: "row" }, field("settings.accent", accent)), h("label", { class: "row" }, reduce, h("span", {}, t("settings.reduceMotion"))), field("settings.qualityLabel", quality, t("settings.qualityHint"))),
       h("section", { class: "card col" }, h("h2", {}, t("settings.language")), field("settings.language", lang, t("settings.languageHint", { current: language, system: systemLanguage() }))),
       h("section", { class: "card col" }, h("h2", {}, t("settings.game")), field("settings.defaultTc", tc), h("label", { class: "row" }, undo, h("span", {}, t("settings.allowUndo")))),
       h("section", { class: "card col" }, h("h2", {}, t("settings.about")), h("p", { class: "dim" }, t("settings.aboutText")))));

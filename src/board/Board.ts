@@ -121,10 +121,11 @@ export class Board {
   }
 
   /** Vista 3D vera quando i pezzi sono modelli 3D o la scacchiera è inclinata; altrimenti Canvas 2D. Senza WebGL si ricade sul 2D. */
+  private force2D = false;
   private async sync3D(): Promise<void> {
     const my = ++this.sync3Token, b = this.spec, ps = this.pieceTh?.manifest.pieces;
     if (!b || !this.boardTh) return;
-    const need = !!ps?.model || (b.view?.tilt ?? 0) > 0;
+    const need = !this.force2D && (!!ps?.model || (b.view?.tilt ?? 0) > 0);
     if (!need) { this.s3?.dispose(); this.s3 = null; this.mountTools(); this.invalidate(); return; }
     try {
       this.mod3 ??= await import("../themes/renderer3d");
@@ -143,6 +144,8 @@ export class Board {
     }
     this.invalidate();
   }
+  /** Forza la vista piatta 2D, ignorando inclinazione e modelli 3D del tema. */
+  setForce2D(v: boolean): void { if (this.force2D === v) return; this.force2D = v; void this.sync3D(); }
   setFlipped(f: boolean): void { this.flipped = f; this.staticDirty = true; this.invalidate(); }
   setInteractive(v: boolean): void { this.interactive = v; if (!v) { this.selected = null; this.legal = []; } this.invalidate(); }
   setLastMove(uci: string | null): void { if (!uci) { this.lastMove = null; } else { const m = splitUci(uci); this.lastMove = [sqIndex(m.from), sqIndex(m.to)]; } this.invalidate(); }
