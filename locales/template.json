@@ -89,7 +89,20 @@
       "agreed": "draw agreed"
     },
     "drawDeclined": "The engine declined the draw.",
-    "saveFailed": "The game could not be saved: {error}"
+    "saveFailed": "The game could not be saved: {error}",
+    "adaptive": "Adapt strength to my results",
+    "adaptiveNote": "Suggested from your recent games: Elo {elo}",
+    "personality": {
+      "label": "Opponent personality",
+      "hint": "The engine only picks among moves that cost little; the personality chooses the one that fits its character.",
+      "neutral": "Neutral (best move)",
+      "random": "Random each game",
+      "aggressive": "Aggressive",
+      "defensive": "Defensive",
+      "positional": "Positional",
+      "tactical": "Tactical",
+      "unpredictable": "Unpredictable"
+    }
   },
   "archive": {
     "mine": "My games",

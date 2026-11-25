@@ -24,6 +24,7 @@ pub fn run() {
             commands::engine_new_game,
             commands::engine_go,
             commands::engine_stop,
+            commands::adaptive_suggest,
             commands::openings_ensure,
             commands::openings_search,
             commands::practice_start,

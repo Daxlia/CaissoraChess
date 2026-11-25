@@ -164,3 +164,24 @@ async fn restart_after_crash_works() {
     e2.is_ready().await.unwrap();
     e2.quit().await.unwrap();
 }
+
+#[tokio::test]
+async fn every_personality_plays_legal_moves_from_real_multipv_lines() {
+    use caissora_core::personality::{pick, Style, SPECIFIC_STYLES};
+    let Some(e) = engine().await else { return };
+    e.set_strength_elo(e.elo_range().unwrap().0).await.unwrap();
+    for style in SPECIFIC_STYLES {
+        let mut b = Board::default();
+        let mut played: Vec<String> = vec![];
+        e.new_game().await.unwrap();
+        for ply in 0..16 {
+            e.set_multipv(style.multipv()).await.unwrap();
+            let r = e.go(&Position::Startpos, &played, &GoParams::movetime(60)).await.unwrap();
+            let mv = pick(&b.fen(), &r.lines, style, ply).unwrap().or(r.best).expect("a move");
+            assert!(b.is_legal_uci(&mv), "{style:?} played illegal {mv} at {}", b.fen());
+            b.play_uci(&mv).unwrap(); played.push(mv);
+        }
+    }
+    let _ = Style::Neutral;
+    e.quit().await.unwrap();
+}

@@ -3,7 +3,7 @@ use caissora_core::{
     chess::{Board, GameStatus, Side},
     db, download, games,
     engine::{parse::Score, spawn_process, Engine, GoParams, Position},
-    theme,
+    theme, adaptive, personality::{self, Style},
     openings::{self, Opening, Practice, PracticeMode, Verdict, OPENINGS_URL},
 };
 use serde::Serialize;
@@ -95,17 +95,39 @@ pub async fn engine_new_game(state: State<'_, AppState>) -> Res<()> {
 pub struct BestMove { best: Option<String>, cp: Option<i32>, mate: Option<i32> }
 
 /// `fen = None` → posizione iniziale. `moves` = mosse UCI giocate da lì.
+/// `style` (neutral/aggressive/defensive/positional/tactical/unpredictable) sceglie tra le linee MultiPV del motore
+/// secondo la personalità; `seed` rende la scelta riproducibile.
 #[tauri::command]
-pub async fn engine_go(state: State<'_, AppState>, fen: Option<String>, moves: Vec<String>, movetime_ms: u64) -> Res<BestMove> {
+pub async fn engine_go(state: State<'_, AppState>, fen: Option<String>, moves: Vec<String>, movetime_ms: u64, style: Option<String>, seed: Option<u64>) -> Res<BestMove> {
     let e = engine(&state).await?;
-    let pos = fen.map(Position::Fen).unwrap_or(Position::Startpos);
-    let r = e.go(&pos, &moves, &GoParams::movetime(movetime_ms.clamp(10, 60_000))).await.map_err(s)?;
+    let style = match style.as_deref() { None => Style::Neutral, Some(x) => Style::parse(x).ok_or("unknown style")? };
+    let pos = fen.clone().map(Position::Fen).unwrap_or(Position::Startpos);
+    let params = GoParams::movetime(movetime_ms.clamp(10, 60_000));
+    if style != Style::Neutral {
+        let mut b = match &fen { Some(f) => Board::from_fen(f).map_err(s)?, None => Board::default() };
+        for m in &moves { b.play_uci(m).map_err(s)?; }
+        e.set_multipv(style.multipv()).await.map_err(s)?;
+        let r = e.go(&pos, &moves, &params).await;
+        let _ = e.set_multipv(1).await;
+        let r = r.map_err(s)?;
+        let best = personality::pick(&b.fen(), &r.lines, style, seed.unwrap_or(0)).map_err(s)?.or(r.best.clone());
+        let score = r.lines.iter().find(|l| l.pv.first() == best.as_ref()).or(r.lines.first()).and_then(|l| l.score);
+        return Ok(BestMove { best, cp: match score { Some(Score::Cp(v)) => Some(v), _ => None }, mate: match score { Some(Score::Mate(v)) => Some(v), _ => None } });
+    }
+    let r = e.go(&pos, &moves, &params).await.map_err(s)?;
     let score = r.lines.first().and_then(|l| l.score);
     Ok(BestMove {
         best: r.best,
         cp: match score { Some(Score::Cp(v)) => Some(v), _ => None },
         mate: match score { Some(Score::Mate(v)) => Some(v), _ => None },
     })
+}
+
+/// Elo consigliato per la prossima partita in base alle ultime partite dell'utente contro il motore.
+#[tauri::command]
+pub fn adaptive_suggest(state: State<'_, AppState>, current: i64, min: i64, max: i64) -> Res<i64> {
+    let recent = games::list(&state.db.lock().unwrap(), 12).map_err(s)?;
+    Ok(adaptive::suggest_elo(&recent, current, min, max, 25))
 }
 
 #[tauri::command]
@@ -203,7 +225,7 @@ pub fn practice_hint(state: State<'_, AppState>) -> Res<Option<(String, String)>
 // ------------------------------------------------------------------ impostazioni
 
 /// Solo queste chiavi sono scrivibili dal frontend.
-const SETTING_KEYS: &[&str] = &["theme_mode", "accent", "language", "reduce_motion", "engine_elo", "time_control", "board_theme", "piece_set", "academy_progress", "quality", "default_time_control", "allow_undo"];
+const SETTING_KEYS: &[&str] = &["theme_mode", "accent", "language", "reduce_motion", "engine_elo", "time_control", "board_theme", "piece_set", "academy_progress", "quality", "default_time_control", "allow_undo", "view_mode", "personality", "adaptive_elo"];
 
 #[tauri::command]
 pub fn settings_get_all(state: State<'_, AppState>) -> Res<std::collections::HashMap<String, String>> {

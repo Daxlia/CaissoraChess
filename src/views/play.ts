@@ -25,7 +25,10 @@ const parseTc = (s: string): TimeControl => {
 };
 const fmt = (ms: number): string => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
-interface GameConfig { elo: number | null; color: "white" | "black"; tc: TimeControl }
+const STYLES = ["aggressive", "defensive", "positional", "tactical", "unpredictable"] as const;
+type Personality = "random" | "neutral" | (typeof STYLES)[number];
+const isPersonality = (v: string): v is Personality => v === "random" || v === "neutral" || (STYLES as readonly string[]).includes(v);
+interface GameConfig { elo: number | null; color: "white" | "black"; tc: TimeControl; /** stile effettivo di questa partita */ style: string }
 
 export async function playView(): Promise<View> {
   const root = h("div", { class: "view" });
@@ -60,7 +63,7 @@ async function gameTab(): Promise<{ el: HTMLElement; destroy: () => void }> {
   // ---- stato
   let engineInfo: EngineInfo | null = null;
   let engineError: string | null = null;
-  let cfg: GameConfig = { elo: null, color: "white", tc: parseTc(getSetting("default_time_control", "5+0")) };
+  let cfg: GameConfig = { elo: null, color: "white", tc: parseTc(getSetting("default_time_control", "5+0")), style: "neutral" };
   let token = 0; // invalida le risposte del motore di partite precedenti
   let moves: string[] = []; const fens: string[] = [START]; const sans: string[] = []; let checks: (string | null)[] = [null];
   let view = 0; let over = false; let busy = false; let started = false; let userWhite = true;
@@ -103,7 +106,7 @@ async function gameTab(): Promise<{ el: HTMLElement; destroy: () => void }> {
 
   const bottomIsUser = () => (userWhite ? !board.isFlipped : board.isFlipped);
   function renderBars(): void {
-    const oppName = engineInfo ? `${engineInfo.name}${cfg.elo ? ` · ${cfg.elo}` : ` · ${t("play.fullStrength")}`}` : t("play.engine");
+    const oppName = engineInfo ? `${engineInfo.name}${cfg.elo ? ` · ${cfg.elo}` : ` · ${t("play.fullStrength")}`}${cfg.style !== "neutral" && started ? ` · ${t(`play.personality.${cfg.style}`)}` : ""}` : t("play.engine");
     const me = t("play.you");
     const userBottom = bottomIsUser();
     topName.textContent = started ? (userBottom ? oppName : me) : oppName;
@@ -162,12 +165,25 @@ async function gameTab(): Promise<{ el: HTMLElement; destroy: () => void }> {
   async function openSetup(): Promise<void> {
     if (!engineInfo) { toast(engineError ?? t("play.engineStarting"), "error"); return; }
     let elo = cfg.elo; let full = cfg.elo === null; let color: "white" | "black" | "random" = cfg.color; let tc = cfg.tc;
+    const savedP = getSetting("personality", "neutral"); let personality: Personality = isPersonality(savedP) ? savedP : "neutral";
+    let adaptive = getSetting("adaptive_elo", "0") === "1";
     const lo = engineInfo.elo_min ?? 1320, hi = engineInfo.elo_max ?? 3190, canLimit = engineInfo.elo_min !== null;
     const eloOut = h("strong", {}, String(elo ?? hi));
     const slider = h("input", { type: "range", min: lo, max: hi, step: 10, value: elo ?? Math.min(hi, 1500), onInput: (e: Event) => { elo = Number((e.target as HTMLInputElement).value); eloOut.textContent = String(elo); } });
     const fullChk = h("input", { type: "checkbox", checked: full, onChange: (e: Event) => { full = (e.target as HTMLInputElement).checked; slider.disabled = full; } });
     slider.disabled = full || !canLimit; fullChk.disabled = !canLimit;
     if (!elo) elo = Math.min(hi, 1500);
+    const adaptNote = h("p", { class: "dim small" });
+    const applyAdaptive = async () => {
+      slider.disabled = full || !canLimit || adaptive; adaptNote.textContent = "";
+      if (!adaptive || !canLimit) return;
+      try { const sug = await api.adaptiveSuggest(elo ?? 1500, lo, hi); elo = sug; slider.value = String(sug); eloOut.textContent = String(sug); adaptNote.textContent = t("play.adaptiveNote", { elo: sug }); } catch { /* senza storico resta l'Elo attuale */ }
+    };
+    const adaptChk = h("input", { type: "checkbox", checked: adaptive, onChange: (e: Event) => { adaptive = (e.target as HTMLInputElement).checked; void applyAdaptive(); } });
+    adaptChk.disabled = !canLimit;
+    const persSel = h("select", { onChange: (e: Event) => { const v = (e.target as HTMLSelectElement).value; if (isPersonality(v)) personality = v; } },
+      ...(["neutral", "random", ...STYLES] as Personality[]).map((v) => h("option", { value: v, selected: v === personality }, t(`play.personality.${v}`))));
+    void applyAdaptive();
     const seg = <T extends string>(opts: { v: T; label: string }[], cur: T, on: (v: T) => void) => {
       const wrap = h("div", { class: "seg", role: "group" });
       const draw = (c: T) => { clear(wrap); for (const o of opts) wrap.append(h("button", { type: "button", "aria-pressed": String(o.v === c), onClick: () => { on(o.v); draw(o.v); } }, o.label)); };
@@ -180,7 +196,10 @@ async function gameTab(): Promise<{ el: HTMLElement; destroy: () => void }> {
     const customBox = h("div", { class: "row", hidden: tc.id !== "custom" }, h("label", { class: "field" }, h("span", {}, t("play.minutes")), min), h("label", { class: "field" }, h("span", {}, t("play.increment")), inc));
     const content = h("div", { class: "col" },
       h("div", { class: "col" }, h("div", { class: "row spread" }, h("span", {}, t("play.strength")), h("span", {}, canLimit ? eloOut : null)), slider,
-        h("label", { class: "row" }, fullChk, h("span", {}, t("play.fullStrength"))), h("p", { class: "dim small" }, canLimit ? t("play.eloNote", { min: lo, max: hi }) : t("play.noEloSupport"))),
+        h("label", { class: "row" }, fullChk, h("span", {}, t("play.fullStrength"))),
+        h("label", { class: "row" }, adaptChk, h("span", {}, t("play.adaptive"))), adaptNote,
+        h("p", { class: "dim small" }, canLimit ? t("play.eloNote", { min: lo, max: hi }) : t("play.noEloSupport"))),
+      h("label", { class: "field" }, h("span", {}, t("play.personality.label")), persSel, h("span", { class: "dim small" }, t("play.personality.hint"))),
       h("div", { class: "col" }, h("span", {}, t("play.color")), seg([{ v: "white", label: t("play.white") }, { v: "black", label: t("play.black") }, { v: "random", label: t("play.random") }] as { v: "white" | "black" | "random"; label: string }[], color, (v) => (color = v))),
       h("label", { class: "field" }, h("span", {}, t("play.timeControl")), tcSel), customBox);
     let m: Modal | null = null;
@@ -189,7 +208,9 @@ async function gameTab(): Promise<{ el: HTMLElement; destroy: () => void }> {
       { label: t("play.start"), primary: true, onClick: async () => {
         const c = color === "random" ? (crypto.getRandomValues(new Uint8Array(1))[0]! % 2 ? "white" : "black") : color;
         m?.close();
-        await startGame({ elo: full || !canLimit ? null : elo, color: c, tc });
+        void setSetting("personality", personality); void setSetting("adaptive_elo", adaptive ? "1" : "0");
+        const style = personality === "random" ? STYLES[crypto.getRandomValues(new Uint8Array(1))[0]! % STYLES.length]! : personality;
+        await startGame({ elo: full || !canLimit ? null : elo, color: c, tc, style });
       } },
     ]);
   }
@@ -258,7 +279,7 @@ async function gameTab(): Promise<{ el: HTMLElement; destroy: () => void }> {
     try {
       const idx = turnOf(fens[fens.length - 1]!) === "w" ? 0 : 1;
       const think = cfg.tc.initial ? Math.round(Math.min(2500, Math.max(150, clocks[idx]! / 40 + cfg.tc.inc * 500))) : 1200;
-      const r = await api.engineGo(null, moves, think);
+      const r = await api.engineGo(null, moves, think, cfg.style, (Date.now() + moves.length * 7919) % 2147483647);
       if (my !== token || over) return;
       if (!r.best) { await finish("1/2-1/2", t("play.result.stalemate")); return; }
       await applyMove(r.best, false);
