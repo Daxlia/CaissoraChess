@@ -16,7 +16,14 @@
     "cancel": "Cancel"
   },
   "board": {
-    "flip": "Flip board"
+    "flip": "Flip board",
+    "view": {
+      "label": "Camera",
+      "reset": "Reset",
+      "top": "Top",
+      "low": "Low",
+      "hint": "Drag the board to rotate and tilt · scroll or pinch to zoom · right-drag also rotates"
+    }
   },
   "piece": {
     "queen": "Queen",

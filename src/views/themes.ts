@@ -111,7 +111,7 @@ export async function themesView(): Promise<View> {
     const m = e.manifest, id = m.id;
     const host = h("div", { class: "board-host card-board" });
     const b = new Board(host, { legalMoves: async () => [] });
-    b.setInteractive(false); b.setPosition(PREVIEW, "w"); b.setAmbient(false); boards.push(b);
+    b.setInteractive(false); b.setCameraControls(false); b.setPosition(PREVIEW, "w"); b.setAmbient(false); boards.push(b);
     const a = activeIds();
     void applyThemes(b, m.board ? id : a.board, m.pieces ? id : a.pieces).catch(() => undefined);
     const body = h("div", { class: "theme-body" });

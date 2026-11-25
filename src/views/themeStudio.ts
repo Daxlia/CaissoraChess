@@ -41,7 +41,7 @@ export async function themeStudio(): Promise<View> {
 
   const host = h("div", { class: "board-host studio-board" });
   const board = new Board(host, { legalMoves: async () => [] });
-  board.setInteractive(false); board.setPosition(PREVIEW, "w");
+  board.setInteractive(false); board.setCameraControls(false); board.setPosition(PREVIEW, "w");
   void loadTheme(activeIds().pieces).then((p) => board.setPieceTheme(p)).catch(() => undefined);
 
   function manifest(): Manifest {

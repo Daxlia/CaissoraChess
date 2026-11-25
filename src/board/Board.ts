@@ -11,6 +11,7 @@ import { PieceSet, pieceId } from "../themes/pieceSprites";
 import { AmbientParticles, glowSprite, type Fx } from "../themes/fx";
 import type { LoadedTheme } from "../themes/registry";
 import type { Scene3D } from "../themes/renderer3d";
+import { t } from "../i18n";
 import type { Ambient, BoardSpec, Motion } from "../themes/types";
 
 export interface BoardOptions {
@@ -59,6 +60,11 @@ export class Board {
   private s3: Scene3D | null = null;
   private mod3: typeof import("../themes/renderer3d") | null = null;
   private sync3Token = 0;
+  private cameraOn = true;
+  private pointers = new Map<number, { x: number; y: number }>();
+  private orbit: { x: number; y: number; moved: boolean; sq: number | null; left: boolean } | null = null;
+  private pinch = 0;
+  private tools: HTMLElement | null = null;
   private particles: AmbientParticles[] = [];
   private frameMs = 0; private degraded = 0; private lastFrame = 0; private startT = performance.now();
 
@@ -72,7 +78,9 @@ export class Board {
     this.canvas.addEventListener("pointerdown", (e) => void this.onDown(e));
     this.canvas.addEventListener("pointermove", (e) => this.onMove(e));
     this.canvas.addEventListener("pointerup", (e) => void this.onUp(e));
-    this.canvas.addEventListener("pointercancel", () => { this.drag = null; this.invalidate(); });
+    this.canvas.addEventListener("pointercancel", (e) => { this.drag = null; this.orbit = null; this.pointers.delete(e.pointerId); this.invalidate(); });
+    this.canvas.addEventListener("wheel", (e) => { if (!this.s3 || !this.cameraOn) return; e.preventDefault(); this.s3.zoomBy(Math.exp(-e.deltaY * 0.0012)); this.invalidate(); }, { passive: false });
+    this.canvas.addEventListener("contextmenu", (e) => { if (this.s3 && this.cameraOn) e.preventDefault(); });
     document.addEventListener("visibilitychange", this.onVisibility);
     this.resize();
   }
@@ -101,12 +109,23 @@ export class Board {
   private pieceTh: LoadedTheme | null = null;
   setPieceTheme(t: LoadedTheme): void { if (!t.manifest.pieces) return; this.pieceTh = t; this.pieces = t.manifest.pieces.source ? new PieceSet(t) : null; void this.sync3D(); this.invalidate(); }
 
+  /** Abilita rotazione, zoom e pulsanti di vista (disattivati nelle anteprime). */
+  setCameraControls(on: boolean): void { this.cameraOn = on; this.mountTools(); }
+  private mountTools(): void {
+    this.tools?.remove(); this.tools = null;
+    if (!this.s3 || !this.cameraOn) return;
+    const mk = (label: string, name: "reset" | "top" | "low") => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.addEventListener("click", () => { this.s3?.preset(name); this.invalidate(); }); return b; };
+    const bar = document.createElement("div"); bar.className = "board-tools"; bar.title = t("board.view.hint"); bar.setAttribute("role", "group"); bar.setAttribute("aria-label", t("board.view.label"));
+    bar.append(mk(t("board.view.reset"), "reset"), mk(t("board.view.top"), "top"), mk(t("board.view.low"), "low"));
+    this.host.appendChild(bar); this.tools = bar;
+  }
+
   /** Vista 3D vera quando i pezzi sono modelli 3D o la scacchiera è inclinata; altrimenti Canvas 2D. Senza WebGL si ricade sul 2D. */
   private async sync3D(): Promise<void> {
     const my = ++this.sync3Token, b = this.spec, ps = this.pieceTh?.manifest.pieces;
     if (!b || !this.boardTh) return;
     const need = !!ps?.model || (b.view?.tilt ?? 0) > 0;
-    if (!need) { this.s3?.dispose(); this.s3 = null; this.invalidate(); return; }
+    if (!need) { this.s3?.dispose(); this.s3 = null; this.mountTools(); this.invalidate(); return; }
     try {
       this.mod3 ??= await import("../themes/renderer3d");
       if (my !== this.sync3Token) return;
@@ -114,8 +133,9 @@ export class Board {
       this.s3?.dispose();
       const s = new this.mod3.Scene3D(this.boardTh, Math.max(2, this.size), this.dpr, this.quality);
       s.setPieces(this.pieceTh, this.pieces); this.s3 = s;
+      this.mountTools();
     } catch {
-      this.s3 = null;
+      this.s3 = null; this.mountTools();
       if (ps?.model) { // niente WebGL: i pezzi solo-3D non si possono disegnare, si usano i classici in 2D
         const { loadTheme } = await import("../themes/registry");
         const c = await loadTheme("classic"); if (my === this.sync3Token) { this.pieceTh = c; this.pieces = new PieceSet(c); }
@@ -240,7 +260,7 @@ export class Board {
   private tick(now: number): void {
     this.raf = 0;
     if (document.hidden || !this.onScreen) return;
-    const loop = this.hasLoop || this.anim !== null || this.fx.length > 0 || this.s3 !== null && this.s3.busy;
+    const loop = this.hasLoop || this.anim !== null || this.fx.length > 0 || this.s3 !== null && (this.s3.busy || this.s3.viewMoving);
     const minGap = this.degraded >= 1 && this.quality !== "high" ? 33 : 15;
     if (loop && now - this.lastFrame < minGap && !this.dirty) { this.raf = requestAnimationFrame((t) => this.tick(t)); return; }
     if (this.dirty || loop) {
@@ -550,28 +570,61 @@ export class Board {
   private async refreshLegal(): Promise<void> { this.legal = await this.opts.legalMoves(); }
 
   private async onDown(e: PointerEvent): Promise<void> {
-    if (!this.interactive || this.busy) return;
+    const cam = !!this.s3 && this.cameraOn;
+    if (cam) {
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pointers.size === 2) { const [a, b] = [...this.pointers.values()]; this.pinch = Math.hypot(a!.x - b!.x, a!.y - b!.y); this.orbit = null; this.drag = null; return; }
+      if (e.button !== 0) { this.canvas.setPointerCapture(e.pointerId); this.orbit = { x: e.clientX, y: e.clientY, moved: true, sq: null, left: false }; return; }
+    }
+    if (!this.interactive || this.busy) { if (cam) { this.canvas.setPointerCapture(e.pointerId); this.orbit = { x: e.clientX, y: e.clientY, moved: false, sq: null, left: false }; } return; }
     const sq = this.squareAt(e);
-    if (sq === null) return;
-    if (this.selected !== null && this.selected !== sq) { if (await this.tryMove(this.selected, sq)) return; }
-    const p = this.squares[sq];
-    if (p && p.color === this.turn) {
+    const own = sq !== null ? this.squares[sq] : null;
+    if (sq !== null && own && own.color === this.turn) {
+      if (this.selected !== null && this.selected !== sq) { if (await this.tryMove(this.selected, sq)) return; }
       this.canvas.setPointerCapture(e.pointerId);
       if (!this.legal.length) await this.refreshLegal();
       this.selected = sq;
       const [x, y] = this.localXY(e);
       this.drag = { from: sq, x, y };
-    } else { this.selected = null; }
-    this.invalidate();
+      this.invalidate();
+      return;
+    }
+    if (cam) { this.canvas.setPointerCapture(e.pointerId); this.orbit = { x: e.clientX, y: e.clientY, moved: false, sq, left: true }; return; }
+    await this.clickSquare(sq);
+  }
+
+  /** Tocco su una casella che non contiene un proprio pezzo: prova la mossa dal pezzo selezionato, altrimenti deseleziona. */
+  private async clickSquare(sq: number | null): Promise<void> {
+    if (!this.interactive || this.busy || sq === null) return;
+    if (this.selected !== null && this.selected !== sq) { if (await this.tryMove(this.selected, sq)) return; }
+    this.selected = null; this.invalidate();
   }
 
   private onMove(e: PointerEvent): void {
+    if (this.pointers.has(e.pointerId)) this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.pointers.size === 2 && this.s3) {
+      const [a, b] = [...this.pointers.values()], d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+      if (this.pinch > 0 && d > 0) { this.s3.zoomBy(d / this.pinch); this.invalidate(); }
+      this.pinch = d; return;
+    }
+    if (this.orbit && this.s3) {
+      const o = this.orbit, dx = e.clientX - o.x, dy = e.clientY - o.y;
+      if (!o.moved && Math.hypot(dx, dy) > 6) o.moved = true;
+      if (o.moved) { this.s3.rotate(-dx * 0.35, dy * 0.3); o.x = e.clientX; o.y = e.clientY; this.invalidate(); }
+      return;
+    }
     if (!this.drag) return;
     [this.drag.x, this.drag.y] = this.localXY(e);
     this.invalidate();
   }
 
   private async onUp(e: PointerEvent): Promise<void> {
+    this.pointers.delete(e.pointerId); if (this.pointers.size < 2) this.pinch = 0;
+    if (this.orbit) {
+      const o = this.orbit; this.orbit = null;
+      if (!o.moved && o.left) await this.clickSquare(o.sq);
+      return;
+    }
     if (!this.drag) return;
     const from = this.drag.from; this.drag = null;
     const to = this.squareAt(e);

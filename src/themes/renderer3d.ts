@@ -16,6 +16,9 @@ export interface Frame3D {
   drag: { from: number; x: number; y: number } | null; flipped: boolean; anim: AnimView | null; hideAt: number | null;
 }
 export type Quality = "low" | "auto" | "high";
+export interface CameraView { az: number; el: number; zoom: number }
+/** Ultima vista scelta dall'utente: la riusano le scacchiere create dopo (cambio pagina, nuova partita). */
+let lastView: CameraView | null = null;
 
 const EASE: Record<string, (k: number) => number> = {
   linear: (k) => k, "ease-out": (k) => 1 - (1 - k) ** 3,
@@ -94,6 +97,7 @@ export class Scene3D {
     this.spec = boardTh.manifest.board!;
     this.fw = frameWidth(this.spec);
     this.tiltDeg = (this.spec.view?.tilt ?? 0) > 0 ? this.spec.view!.tilt! : 36;
+    this.view = lastView ?? this.defaultView();
     const lt = this.spec.lighting ?? {};
     this.scene.environment = sharedEnv ?? null; this.scene.environmentIntensity = lt.environment ?? 0.7;
     // sfondo
@@ -219,7 +223,8 @@ export class Scene3D {
   // ---------------------------------------------------------------- camera
 
   private fitCamera(): void {
-    const fw = this.fw, W = 8 + 2 * fw, el = ((90 - this.tiltDeg) * Math.PI) / 180;
+    const fw = this.fw, W = 8 + 2 * fw, el = (this.view.el * Math.PI) / 180;
+    this.fitEl = this.view.el;
     const cam = this.camera; cam.aspect = 1; cam.clearViewOffset();
     const target = new THREE.Vector3(0, 0.2, 0);
     const dirOf = (az: number) => new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
@@ -241,8 +246,31 @@ export class Scene3D {
   private dist = 14; private target = new THREE.Vector3(); private yShift = 0;
   private dirOf: (az: number) => THREE.Vector3 = () => new THREE.Vector3(0, 1, 1);
 
+  // ---------------------------------------------------------------- controllo camera dell'utente
+  private view!: CameraView; private fitEl = -1; private viewAnim: { from: CameraView; to: CameraView; t0: number } | null = null;
+  defaultView(): CameraView { return { az: 0, el: 90 - this.tiltDeg, zoom: 1 }; }
+  getView(): CameraView { return { ...this.view }; }
+  private clampView(v: CameraView): CameraView { return { az: v.az, el: Math.min(88, Math.max(12, v.el)), zoom: Math.min(2.6, Math.max(0.55, v.zoom)) }; }
+  private commit(v: CameraView): void { this.view = this.clampView(v); lastView = this.view; }
+  /** Ruota (gradi) e inclina la vista; interrompe qualsiasi transizione in corso. */
+  rotate(dAzDeg: number, dElDeg: number): void { this.viewAnim = null; this.commit({ ...this.view, az: this.view.az + (dAzDeg * Math.PI) / 180, el: this.view.el + dElDeg }); }
+  zoomBy(f: number): void { this.viewAnim = null; this.commit({ ...this.view, zoom: this.view.zoom * f }); }
+  /** Transizione morbida verso una vista (preset o ripristino). */
+  goTo(v: CameraView, now = performance.now()): void { this.viewAnim = { from: { ...this.view }, to: this.clampView(v), t0: now }; }
+  preset(name: "reset" | "top" | "low"): void {
+    const d = this.defaultView();
+    this.goTo(name === "reset" ? d : name === "top" ? { az: 0, el: 88, zoom: 1 } : { az: 0, el: 17, zoom: 1.15 });
+  }
+  get viewMoving(): boolean { return this.viewAnim !== null; }
+
   private placeCamera(): void {
-    const cam = this.camera; cam.position.copy(this.target).addScaledVector(this.dirOf(this.azimuth), this.dist); cam.lookAt(this.target);
+    if (this.viewAnim) {
+      const a = this.viewAnim, k = Math.min(1, (performance.now() - a.t0) / 500), e = 1 - (1 - k) ** 3;
+      this.view = { az: a.from.az + (a.to.az - a.from.az) * e, el: a.from.el + (a.to.el - a.from.el) * e, zoom: a.from.zoom + (a.to.zoom - a.from.zoom) * e };
+      if (k >= 1) { this.viewAnim = null; this.commit(this.view); }
+    }
+    if (Math.abs(this.fitEl - this.view.el) > 0.01) this.fitCamera();
+    const cam = this.camera; cam.position.copy(this.target).addScaledVector(this.dirOf(this.azimuth + this.view.az), this.dist / this.view.zoom); cam.lookAt(this.target);
     cam.updateMatrixWorld();
     // sposta l'immagine in verticale (ricentra) con un offset di vista invece di muovere la camera
     cam.setViewOffset(1000, 1000, 0, this.yShift * 500, 1000, 1000); cam.updateProjectionMatrix();
