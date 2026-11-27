@@ -139,6 +139,19 @@ impl PuzzleSession {
         self.moves.get(self.idx).map(|s| s.as_str())
     }
 
+    /// Gioca tutta la soluzione rimasta e la restituisce nell'ordine reale (mossa dell'utente, risposta, ...).
+    pub fn play_solution(&mut self) -> Result<Vec<String>> {
+        let mut out = vec![];
+        while let Some(m) = self.expected().map(String::from) {
+            out.push(m.clone());
+            match self.submit(&m)? {
+                Step::Correct { reply, solved } => { out.extend(reply); if solved { break; } }
+                _ => break,
+            }
+        }
+        Ok(out)
+    }
+
     pub fn submit(&mut self, uci: &str) -> Result<Step> {
         let expected = self.expected().ok_or_else(|| Error::Data("puzzle already solved".into()))?.to_string();
         if !self.board.is_legal_uci(uci) {
@@ -218,6 +231,18 @@ CJeg1,r7/3n3k/p4npp/1p1pb3/1P2p2N/4P1P1/P3BQ1P/q1B2RK1 b - - 1 24,a1a2 h4g6 e5d6
         assert_eq!(s.submit("d1d9").unwrap(), Step::Illegal);
         assert_eq!(s.submit("d1d8").unwrap(), Step::Correct { reply: Some("e7c8".into()), solved: false });
         assert_eq!(s.submit("c3c8").unwrap(), Step::Correct { reply: None, solved: true });
+    }
+
+    #[test]
+    fn solution_playback_interleaves_opponent_replies() {
+        let p = sample("CJPAf", "3r4/ppk1nr2/6p1/4p1P1/5q2/2Q5/PPP2P2/1K1R4 b - - 5 28", "c7b8 d1d8 e7c8 c3c8");
+        let mut s = PuzzleSession::new(&p).unwrap();
+        assert_eq!(s.play_solution().unwrap(), vec!["d1d8", "e7c8", "c3c8"]);
+        assert!(s.expected().is_none());
+        // a metà: dopo la prima mossa giusta restano solo le mosse seguenti
+        let mut s = PuzzleSession::new(&p).unwrap();
+        s.submit("d1d8").unwrap();
+        assert_eq!(s.play_solution().unwrap(), vec!["c3c8"]);
     }
 
     #[test]

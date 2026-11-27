@@ -66,6 +66,50 @@ const MIGRATIONS: &[&str] = &[
         manifest         TEXT NOT NULL
     ) WITHOUT ROWID;
     ",
+    // v3: puzzle importati dalle partizioni scaricate, puzzle salvati, tentativi (statistiche)
+    "
+    CREATE TABLE puzzles (
+        pid          INTEGER PRIMARY KEY,
+        id           TEXT NOT NULL UNIQUE,
+        partition    INTEGER NOT NULL,
+        fen          TEXT NOT NULL,
+        moves        TEXT NOT NULL,
+        rating       INTEGER NOT NULL,
+        popularity   INTEGER NOT NULL,
+        nb_plays     INTEGER NOT NULL,
+        opening_tags TEXT NOT NULL
+    );
+    CREATE INDEX idx_puzzles_rating    ON puzzles(rating);
+    CREATE INDEX idx_puzzles_partition ON puzzles(partition);
+    CREATE TABLE puzzle_theme (
+        pid   INTEGER NOT NULL REFERENCES puzzles(pid) ON DELETE CASCADE,
+        theme TEXT NOT NULL,
+        PRIMARY KEY (theme, pid)
+    ) WITHOUT ROWID;
+    CREATE TABLE puzzle_partitions (
+        n           INTEGER PRIMARY KEY,
+        rows        INTEGER NOT NULL,
+        bytes       INTEGER NOT NULL,
+        sha256      TEXT NOT NULL,
+        imported_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE puzzle_saved (
+        id       TEXT PRIMARY KEY NOT NULL,
+        saved_at TEXT NOT NULL DEFAULT (datetime('now'))
+    ) WITHOUT ROWID;
+    CREATE TABLE puzzle_attempts (
+        id           INTEGER PRIMARY KEY,
+        puzzle_id    TEXT NOT NULL,
+        attempted_at TEXT NOT NULL DEFAULT (datetime('now')),
+        solved       INTEGER NOT NULL CHECK (solved IN (0,1)),
+        mistakes     INTEGER NOT NULL,
+        ms           INTEGER NOT NULL,
+        rating       INTEGER NOT NULL,
+        themes       TEXT NOT NULL
+    );
+    CREATE INDEX idx_attempts_puzzle ON puzzle_attempts(puzzle_id);
+    CREATE INDEX idx_attempts_time   ON puzzle_attempts(attempted_at);
+    ",
 ];
 
 pub fn latest_version() -> u32 {

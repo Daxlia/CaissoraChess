@@ -1,9 +1,9 @@
-use crate::{engine_path, state::AppState};
+use crate::{engine_path, state::{ActivePuzzle, AppState}};
 use caissora_core::{
     chess::{Board, GameStatus, Side},
     db, download, games,
     engine::{parse::Score, spawn_process, Engine, GoParams, Position},
-    theme, adaptive, personality::{self, Style},
+    puzzle::{self, PuzzleSession, Step, PARTITIONS}, puzzle_index::PuzzleIndex, puzzle_store::{self, Query as PuzzleQuery}, theme, adaptive, personality::{self, Style},
     openings::{self, Opening, Practice, PracticeMode, Verdict, OPENINGS_URL},
 };
 use serde::Serialize;
@@ -138,7 +138,7 @@ pub async fn engine_stop(state: State<'_, AppState>) -> Res<()> {
 // ------------------------------------------------------------------ aperture
 
 #[derive(Serialize, Clone)]
-struct Progress { name: &'static str, done: u64, total: Option<u64> }
+struct Progress { name: String, done: u64, total: Option<u64> }
 
 /// Scarica (solo se manca) e importa il Parquet. Restituisce il numero di aperture.
 #[tauri::command]
@@ -151,7 +151,7 @@ pub async fn openings_ensure(app: AppHandle, state: State<'_, AppState>) -> Res<
 
     let dest = state.data_dir.join("openings.parquet");
     let dl = download::download_to(OPENINGS_URL, &dest, None, 10 * 1024 * 1024, |done, total| {
-        let _ = app.emit("download-progress", Progress { name: "openings", done, total });
+        let _ = app.emit("download-progress", Progress { name: "openings".into(), done, total });
     }).await.map_err(s)?;
 
     let rows = openings::read_parquet(&dest).map_err(s)?;
@@ -291,4 +291,151 @@ pub fn themes_remove(state: State<'_, AppState>, id: String) -> Res<()> {
 #[tauri::command]
 pub fn theme_asset(state: State<'_, AppState>, id: String, path: String) -> Res<tauri::ipc::Response> {
     theme::read_asset(&state.data_dir, &id, &path).map(tauri::ipc::Response::new).map_err(s)
+}
+
+// ------------------------------------------------------------------ puzzle
+
+const INDEX_URL: &str = "https://raw.githubusercontent.com/Daxlia/CaissoraChess/main/caissora_data/index/puzzle-index.json.zst";
+
+#[derive(Serialize)]
+pub struct PartitionInfo { n: u32, installed: bool, rows: Option<u32>, /// righe dichiarate dall'indice (se scaricato)
+    index_rows: Option<u32> }
+
+#[derive(Serialize)]
+pub struct PuzzleOverview { partitions: Vec<PartitionInfo>, total: u64, themes: Vec<(String, u64)>, index_loaded: bool, stats: puzzle_store::Stats }
+
+fn puzzles_dir(st: &AppState) -> std::path::PathBuf { st.data_dir.join("puzzles") }
+
+fn load_index(st: &AppState) -> Option<PuzzleIndex> {
+    let b = std::fs::read(st.data_dir.join("puzzle-index.json.zst")).ok()?;
+    PuzzleIndex::from_bytes(&b).ok()
+}
+
+#[tauri::command]
+pub fn puzzles_overview(state: State<'_, AppState>) -> Res<PuzzleOverview> {
+    let idx = load_index(&state);
+    let conn = state.db.lock().unwrap();
+    let inst: std::collections::HashMap<u32, u32> = puzzle_store::installed(&conn).map_err(s)?.into_iter().collect();
+    let partitions = (0..PARTITIONS).map(|n| PartitionInfo {
+        n, installed: inst.contains_key(&n), rows: inst.get(&n).copied(),
+        index_rows: idx.as_ref().and_then(|i| i.partitions.iter().find(|p| p.n == n).map(|p| p.rows)),
+    }).collect();
+    Ok(PuzzleOverview {
+        partitions, total: inst.values().map(|v| *v as u64).sum(), themes: puzzle_store::theme_counts(&conn).map_err(s)?,
+        index_loaded: idx.is_some(), stats: puzzle_store::stats(&conn).map_err(s)?,
+    })
+}
+
+/// Scarica (se serve) l'indice statistico facoltativo: mostra quanti puzzle ha ogni partizione prima di scaricarla.
+#[tauri::command]
+pub async fn puzzles_fetch_index(state: State<'_, AppState>) -> Res<bool> {
+    let dest = state.data_dir.join("puzzle-index.json.zst");
+    download::download_to(INDEX_URL, &dest, None, 4 * 1024 * 1024, |_, _| {}).await.map_err(s)?;
+    if PuzzleIndex::from_bytes(&std::fs::read(&dest).map_err(s)?).is_err() { let _ = std::fs::remove_file(&dest); return Err("downloaded index is not valid".into()); }
+    Ok(true)
+}
+
+/// Scarica la partizione `n` (file originale intatto in `puzzles/`) e la importa nel database.
+#[tauri::command]
+pub async fn puzzles_download(app: AppHandle, state: State<'_, AppState>, n: u32) -> Res<u32> {
+    let url = puzzle::partition_url(n).map_err(s)?;
+    let dest = puzzles_dir(&state).join(puzzle::partition_file_name(n).map_err(s)?);
+    let name = format!("puzzle-{n}");
+    let dl = download::download_to(&url, &dest, None, 64 * 1024 * 1024, |done, total| {
+        let _ = app.emit("download-progress", Progress { name: name.clone(), done, total });
+    }).await.map_err(s)?;
+    let rows = {
+        let mut conn = state.db.lock().unwrap();
+        puzzle_store::import_partition(&mut conn, n, &dest, dl.bytes, &dl.sha256).map_err(s)
+    };
+    match rows { Ok(r) => Ok(r), Err(e) => { let _ = std::fs::remove_file(&dest); Err(e) } }
+}
+
+#[tauri::command]
+pub fn puzzles_remove(state: State<'_, AppState>, n: u32) -> Res<()> {
+    puzzle_store::remove_partition(&mut state.db.lock().unwrap(), n).map_err(s)?;
+    let _ = std::fs::remove_file(puzzles_dir(&state).join(puzzle::partition_file_name(n).map_err(s)?));
+    Ok(())
+}
+
+#[derive(Serialize)]
+pub struct PuzzleList { total: u64, items: Vec<puzzle_store::Summary> }
+
+#[tauri::command]
+pub fn puzzles_find(state: State<'_, AppState>, query: PuzzleQuery, limit: Option<usize>, offset: Option<usize>) -> Res<PuzzleList> {
+    let conn = state.db.lock().unwrap();
+    Ok(PuzzleList { total: puzzle_store::count(&conn, &query).map_err(s)?, items: puzzle_store::list(&conn, &query, limit.unwrap_or(50), offset.unwrap_or(0)).map_err(s)? })
+}
+
+#[derive(Serialize)]
+pub struct PuzzleStart { id: String, rating: u32, themes: Vec<String>, opening_tags: Vec<String>, fen_before: String, opponent_move: String, fen: String, user_is_white: bool, saved: bool, plays: u32 }
+
+fn start_puzzle(state: &AppState, p: puzzle::Puzzle) -> Res<PuzzleStart> {
+    let session = PuzzleSession::new(&p).map_err(s)?;
+    let saved: bool = state.db.lock().unwrap().query_row("SELECT EXISTS(SELECT 1 FROM puzzle_saved WHERE id = ?1)", [&p.id], |r| r.get(0)).map_err(s)?;
+    let out = PuzzleStart { id: p.id.clone(), rating: p.rating, themes: p.themes.clone(), opening_tags: p.opening_tags.clone(), fen_before: p.fen.clone(),
+        opponent_move: session.opponent_first_move.clone(), fen: session.start_fen.clone(), user_is_white: session.user_is_white, saved, plays: p.nb_plays };
+    *state.puzzle.lock().unwrap() = Some(ActivePuzzle { puzzle: p, session, started: std::time::Instant::now(), mistakes: 0, recorded: false });
+    Ok(out)
+}
+
+/// `id` = puzzle preciso; altrimenti uno a caso tra quelli che rispettano il filtro.
+#[tauri::command]
+pub fn puzzles_start(state: State<'_, AppState>, id: Option<String>, query: Option<PuzzleQuery>, seed: u64) -> Res<Option<PuzzleStart>> {
+    let p = {
+        let conn = state.db.lock().unwrap();
+        match id { Some(id) => puzzle_store::get(&conn, &id).map_err(s)?, None => puzzle_store::random(&conn, &query.unwrap_or_default(), seed).map_err(s)? }
+    };
+    p.map(|p| start_puzzle(&state, p)).transpose()
+}
+
+#[derive(Serialize)]
+pub struct PuzzleMoveResult { /// correct | wrong | illegal
+    status: &'static str, reply: Option<String>, solved: bool, fen: String }
+
+fn record(state: &AppState, a: &mut ActivePuzzle, solved: bool) -> Res<()> {
+    if a.recorded { return Ok(()); }
+    a.recorded = true;
+    puzzle_store::record_attempt(&state.db.lock().unwrap(), &a.puzzle, solved, a.mistakes, a.started.elapsed().as_millis() as u64).map_err(s)
+}
+
+#[tauri::command]
+pub fn puzzles_move(state: State<'_, AppState>, uci: String) -> Res<PuzzleMoveResult> {
+    let mut g = state.puzzle.lock().unwrap();
+    let a = g.as_mut().ok_or("no puzzle in progress")?;
+    let step = a.session.submit(&uci).map_err(s)?;
+    let fen = a.session.fen();
+    Ok(match step {
+        Step::Illegal => PuzzleMoveResult { status: "illegal", reply: None, solved: false, fen },
+        Step::Wrong => { a.mistakes += 1; PuzzleMoveResult { status: "wrong", reply: None, solved: false, fen } }
+        Step::Correct { reply, solved } => {
+            if solved { record(&state, a, true)?; }
+            PuzzleMoveResult { status: "correct", reply, solved, fen }
+        }
+    })
+}
+
+/// Suggerimento: la mossa attesa. Conta come errore (il puzzle non risulta più "pulito").
+#[tauri::command]
+pub fn puzzles_hint(state: State<'_, AppState>) -> Res<Option<String>> {
+    let mut g = state.puzzle.lock().unwrap();
+    let a = g.as_mut().ok_or("no puzzle in progress")?;
+    let m = a.session.expected().map(String::from);
+    if m.is_some() { a.mistakes += 1; }
+    Ok(m)
+}
+
+/// Rinuncia: registra il tentativo come fallito e restituisce la soluzione rimanente.
+#[tauri::command]
+pub fn puzzles_give_up(state: State<'_, AppState>) -> Res<Vec<String>> {
+    let mut g = state.puzzle.lock().unwrap();
+    let a = g.as_mut().ok_or("no puzzle in progress")?;
+    record(&state, a, false)?;
+    let rest = a.session.play_solution().map_err(s)?;
+    Ok(rest)
+}
+
+#[tauri::command]
+pub fn puzzles_save(state: State<'_, AppState>, id: String, saved: bool) -> Res<()> {
+    puzzle_store::set_saved(&state.db.lock().unwrap(), &id, saved).map_err(s)
 }

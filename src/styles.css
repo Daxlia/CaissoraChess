@@ -149,3 +149,16 @@ label.field { display: flex; flex-direction: column; gap: 6px; } label.field > s
 .board-tools button { font: inherit; font-size: .75rem; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(20,20,24,.55); color: #fff; backdrop-filter: blur(6px); cursor: pointer; }
 .board-tools button:hover { background: rgba(20,20,24,.8); }
 .board-host canvas { touch-action: none; }
+
+/* Puzzle Explorer */
+.tabs.sub { margin-top: -6px; }
+.puzzle-split { grid-template-columns: minmax(260px, 340px) 1fr; }
+@media (max-width: 899px) { .puzzle-split { grid-template-columns: 1fr; } }
+.puzzle-status { min-height: 1.6em; font-weight: 600; }
+.col.tight { gap: 2px; align-items: flex-start; }
+.partition-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 16px; }
+.partition { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.partition.on { border-color: var(--accent); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat-tile { display: flex; flex-direction: column; gap: 4px; padding: 14px; }
+.stat-tile strong { font-size: 1.6rem; font-variant-numeric: tabular-nums; }

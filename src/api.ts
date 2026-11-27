@@ -8,6 +8,12 @@ export interface BestMove { best: string | null; cp: number | null; mate: number
 export interface Opening { id: number; eco: string; name: string; pgn: string; uci: string }
 export interface PracticeStart { fen: string; opponent_moves: string[]; hint: [string, string] | null; finished: boolean }
 export interface PracticeStep { verdict: "on_line" | "deviation" | "illegal"; expected: string | null; opponent_reply: string | null; finished: boolean; fen: string; hint: [string, string] | null }
+export interface PuzzleQuery { rating_min?: number | null; rating_max?: number | null; themes?: string[]; opening_tag?: string | null; partition?: number | null; saved_only?: boolean; unsolved_only?: boolean }
+export interface PuzzleSummary { id: string; partition: number; rating: number; themes: string[]; opening_tags: string[]; saved: boolean; solved: boolean }
+export interface PuzzleStats { attempts: number; solved: number; clean: number; streak: number; avg_ms: number; recent_solved_rating: number | null; by_theme: { theme: string; attempts: number; solved: number }[]; saved: number }
+export interface PuzzleOverview { partitions: { n: number; installed: boolean; rows: number | null; index_rows: number | null }[]; total: number; themes: [string, number][]; index_loaded: boolean; stats: PuzzleStats }
+export interface PuzzleStart { id: string; rating: number; themes: string[]; opening_tags: string[]; fen_before: string; opponent_move: string; fen: string; user_is_white: boolean; saved: boolean; plays: number }
+export interface PuzzleMoveResult { status: "correct" | "wrong" | "illegal"; reply: string | null; solved: boolean; fen: string }
 export interface GameRow { id: number; played_at: string; opponent: string; engine_elo: number | null; time_control: string; user_is_white: boolean; result: string; moves_uci: string }
 
 export interface InstalledTheme { id: string; installed_at: string; manifest: unknown }
@@ -20,6 +26,16 @@ export const api = {
   engineSetStrength: (elo: number | null) => invoke<void>("engine_set_strength", { elo }),
   engineNewGame: () => invoke<void>("engine_new_game"),
   engineGo: (fen: string | null, moves: string[], movetimeMs: number, style?: string, seed?: number) => invoke<BestMove>("engine_go", { fen, moves, movetimeMs, style: style ?? null, seed: seed ?? null }),
+  puzzlesOverview: () => invoke<PuzzleOverview>("puzzles_overview"),
+  puzzlesFetchIndex: () => invoke<boolean>("puzzles_fetch_index"),
+  puzzlesDownload: (n: number) => invoke<number>("puzzles_download", { n }),
+  puzzlesRemove: (n: number) => invoke<void>("puzzles_remove", { n }),
+  puzzlesFind: (query: PuzzleQuery, limit = 50, offset = 0) => invoke<{ total: number; items: PuzzleSummary[] }>("puzzles_find", { query, limit, offset }),
+  puzzlesStart: (id: string | null, query: PuzzleQuery | null, seed: number) => invoke<PuzzleStart | null>("puzzles_start", { id, query, seed }),
+  puzzlesMove: (uci: string) => invoke<PuzzleMoveResult>("puzzles_move", { uci }),
+  puzzlesHint: () => invoke<string | null>("puzzles_hint"),
+  puzzlesGiveUp: () => invoke<string[]>("puzzles_give_up"),
+  puzzlesSave: (id: string, saved: boolean) => invoke<void>("puzzles_save", { id, saved }),
   adaptiveSuggest: (current: number, min: number, max: number) => invoke<number>("adaptive_suggest", { current, min, max }),
   engineStop: () => invoke<void>("engine_stop"),
   openingsEnsure: () => invoke<number>("openings_ensure"),

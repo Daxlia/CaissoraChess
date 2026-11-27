@@ -11,6 +11,7 @@ pub mod openings;
 pub mod personality;
 pub mod puzzle;
 pub mod puzzle_index;
+pub mod puzzle_store;
 pub mod theme;
 
 pub use error::{Error, Result};

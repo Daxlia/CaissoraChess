@@ -3,6 +3,7 @@ import { Board } from "../board/Board";
 import { bindAppearance, turnOf } from "../board/appearance";
 import { clear, h, toast } from "../dom";
 import { t } from "../i18n";
+import { PuzzleExplorer } from "./puzzles";
 import { createReplay, type Replay } from "./replay";
 import type { View } from "./types";
 
@@ -11,11 +12,18 @@ const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 export async function trainingView(): Promise<View> {
   const root = h("div", { class: "view" });
   const body = h("div");
-  root.append(h("div", { class: "page-head" }, h("h1", {}, t("nav.training")), h("p", { class: "dim" }, t("training.subtitle"))),
-    h("div", { class: "tabs", role: "tablist" }, h("button", { class: "tab", role: "tab", "aria-selected": "true" }, t("training.openings"))), body);
-  const ex = new OpeningExplorer(body);
-  void ex.init();
-  return { el: root, destroy: () => ex.destroy() };
+  const tabs = h("div", { class: "tabs", role: "tablist" });
+  let active: { destroy: () => void } | null = null;
+  const open = (id: "openings" | "puzzles") => {
+    for (const b of tabs.children) b.setAttribute("aria-selected", String((b as HTMLElement).dataset.id === id));
+    active?.destroy(); clear(body);
+    const view = id === "openings" ? new OpeningExplorer(body) : new PuzzleExplorer(body);
+    active = view; void view.init();
+  };
+  for (const id of ["openings", "puzzles"] as const) tabs.append(h("button", { class: "tab", role: "tab", "data-id": id, onClick: () => open(id) }, t(`training.${id}`)));
+  root.append(h("div", { class: "page-head" }, h("h1", {}, t("nav.training")), h("p", { class: "dim" }, t("training.subtitle"))), tabs, body);
+  open("openings");
+  return { el: root, destroy: () => active?.destroy() };
 }
 
 class OpeningExplorer {
